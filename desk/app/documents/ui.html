@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Groundwire Drive</title>
+  <meta name="theme-color" content="#1a73e8">
+  <link rel="manifest" href="/drive/manifest.json">
+  <link rel="preconnect" href="https://rsms.me/">
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+  <!-- Bump ?v= in lockstep with SHELL_VERSION in client/src/sw.ts on bundle changes. -->
+  <link rel="stylesheet" href="/drive/app.css?v=v15">
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    window.__SHIP__ = window.location.hostname.split('.')[0];
+  </script>
+  <script src="/drive/app.js?v=v15"></script>
+</body>
+</html>

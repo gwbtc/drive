@@ -1,0 +1,8 @@
+:~  title+'Groundwire Drive'
+    info+'Shared docs, sheets, and notes for your whole company. Real-time, self-hosted.'
+    color+0x1a.73e8
+    version+[1 0 0]
+    website+'https://groundwire.computer'
+    license+'Source-available — see LICENSE'
+    site+/drive
+==

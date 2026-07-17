@@ -1,0 +1,47 @@
+# Local fakeship piers (huge, runtime state)
+zod/
+bus/
+.piers/
+*-pier/
+*-comet/
+
+# Test artefacts
+test-results/
+
+# Vere binaries
+vere*
+urbit
+*.pill
+
+# JS deps
+node_modules/
+.npm/
+.bun/
+
+# Build artefacts (we keep the bundled output committed since the gall agent
+# serves it directly; do NOT add desk/app/documents/js.js or css.css here).
+dist/
+build/
+*.tsbuildinfo
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+.urb/log/
+
+# Local-only credentials and overrides
+.env
+.env.local
+*.pem
+*.key
+
+# demo recording artifacts
+client/demo/out/
+demo/*.mp4
+

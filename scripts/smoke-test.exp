@@ -1,0 +1,50 @@
+#!/usr/bin/env expect -f
+# Smoke test: boot a fakeship, install the %documents desk, watch for errors.
+#
+# Usage:  expect scripts/smoke-test.exp <ship>
+
+set timeout 180
+set ship [lindex $argv 0]
+if {$ship eq ""} { set ship "zod" }
+
+set vere "/Users/trent/vere-v4.2-macos-aarch64"
+set workdir "/Users/trent/urbit-documents"
+
+cd $workdir
+
+spawn $vere -F $ship --http-port 8090
+
+expect {
+  -re "~$ship:dojo>" {}
+  timeout { puts "BOOT TIMED OUT"; exit 1 }
+}
+
+# Create and mount the new desk
+send "|new-desk %documents\r"
+expect -re "~$ship:dojo>"
+send "|mount %documents\r"
+expect -re "~$ship:dojo>"
+
+# Copy the desk into the mounted pier (run via spawn'd shell)
+exec sh -c "cp -R $workdir/desk/* $workdir/$ship/documents/"
+
+# Commit and watch for compile errors
+send "|commit %documents\r"
+expect {
+  -re "~$ship:dojo>" {}
+  timeout { puts "COMMIT TIMED OUT"; exit 2 }
+}
+
+# Install
+send "|install our %documents\r"
+expect {
+  -re "~$ship:dojo>" {}
+  timeout { puts "INSTALL TIMED OUT"; exit 3 }
+}
+
+# Wait briefly to surface any post-install agent errors
+sleep 3
+
+# Quit
+send "|exit\r"
+expect eof
