@@ -2943,3 +2943,257 @@ input.sheet-cell { display: block; padding: 6px 12px; }
 }
 
 .space-directory-you { color: var(--muted); font-weight: 400; }
+
+/* === Chat: per-space rooms + 1:1 DMs ===================================== */
+
+/* Badge dots reused by the rail (Messages + per-space unread) and space tabs. */
+.rail-dot {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--bg-rail);
+}
+.rail-icon { position: relative; }
+
+/* Space section tabs (Files / Chat) */
+.space-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin: 0 0 16px;
+}
+.space-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted-strong);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+}
+.space-tab:hover { color: var(--text); }
+.space-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-dot {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* Make the space view fill the viewport when the room is open, so the
+   composer pins to the bottom and only the messages scroll. */
+.shell-main:has(.files-chat),
+.shell-main:has(.dm-layout) { padding-bottom: 24px; }
+.files.files-chat {
+  height: calc(100dvh - 56px);
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The chat surface itself: scrolling message list + a pinned composer. */
+.chat {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  overflow: hidden;
+}
+.chat-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.chat-empty { margin: auto; padding: 24px; text-align: center; }
+.chat-msg { padding: 1px 0; }
+.chat-msg.group-start { margin-top: 12px; }
+.chat-msg-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.chat-msg-head .patp { font-size: 13px; font-weight: 700; }
+.chat-msg-time { font-size: 11px; color: var(--muted); }
+.chat-msg-text {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.chat-msg.mine .chat-msg-text { color: var(--text); }
+.chat-msg:hover { background: var(--bg-hover); border-radius: 6px; }
+
+.chat-unread-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 4px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.chat-unread-divider::before,
+.chat-unread-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--accent);
+  opacity: 0.4;
+}
+
+.chat-composer {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-soft);
+}
+.chat-composer.chat-readonly { justify-content: center; font-size: 13px; padding: 14px; }
+.chat-input {
+  flex: 1;
+  resize: none;
+  max-height: 140px;
+  min-height: 38px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.chat-input:focus { outline: none; border-color: var(--accent); }
+.chat-send { border-radius: 20px; flex: none; }
+
+/* === Messages (DM) view: master-detail ================================== */
+.dm-layout {
+  height: calc(100dvh - 56px);
+  min-height: 420px;
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 16px;
+}
+.dm-sidebar {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg);
+}
+.dm-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.dm-sidebar-head h1 { font-size: 18px; font-weight: 600; margin: 0; }
+.btn-sm { padding: 5px 12px; font-size: 13px; }
+.dm-list { list-style: none; margin: 0; padding: 6px; overflow-y: auto; flex: 1; }
+.dm-list-empty { padding: 24px 16px; text-align: center; font-size: 13px; }
+.dm-list-item {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text);
+}
+.dm-list-item:hover { background: var(--bg-hover); }
+.dm-list-item.active { background: var(--accent-soft); }
+.dm-list-row1 { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.dm-list-peer { font-size: 13px; font-weight: 700; }
+.dm-list-time { font-size: 11px; color: var(--muted); flex: none; }
+.dm-list-row2 { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 2px; }
+.dm-list-preview {
+  font-size: 13px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dm-unread-pill {
+  flex: none;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+.dm-main {
+  min-width: 0;
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg);
+}
+.dm-main-empty { margin: auto; padding: 24px; text-align: center; }
+.dm-thread { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.dm-thread-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-soft);
+}
+.dm-thread-peer { font-size: 15px; font-weight: 700; }
+.dm-back { display: none; font-size: 22px; line-height: 1; }
+/* Inside the DM thread the chat has no border (the pane already has one). */
+.dm-thread .chat { border: none; border-radius: 0; }
+
+/* Mobile: one pane at a time. The list is full-width until a peer is chosen. */
+@media (max-width: 720px) {
+  .dm-layout { grid-template-columns: 1fr; }
+  .dm-layout[data-has-peer='false'] .dm-main { display: none; }
+  .dm-layout[data-has-peer='true'] .dm-sidebar { display: none; }
+  .dm-back { display: inline-flex; }
+}
+
+/* Chat/DM on phones: prevent iOS zoom-on-focus (needs >=16px), give the
+   thread panes the full available height, and keep the composer reachable. */
+@media (max-width: 640px) {
+  .chat-input { font-size: 16px; }
+  .files.files-chat,
+  .dm-layout { height: calc(100dvh - 36px); }
+  .dm-sidebar-head h1 { font-size: 16px; }
+  .space-tabs { overflow-x: auto; }
+}

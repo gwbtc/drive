@@ -41,5 +41,5 @@ COOKIE="$(login "$BASE" "$CODE")"
 
 cd "$ROOT/client"
 SHIP_URL="$BASE" SHIP_NAME="$SHIP" COOKIE="$COOKIE" \
-EXPECTED_STATE_VERSION="${EXPECTED_STATE_VERSION:-10}" \
+EXPECTED_STATE_VERSION="${EXPECTED_STATE_VERSION:-12}" \
   "${BUN:-$HOME/.bun/bin/bun}" test e2e/migration.test.ts --timeout 60000

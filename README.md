@@ -33,6 +33,8 @@ source-available. Internal desk/agent codename: `%drive`.
   presence stack in the editor header, SSE auto-reconnect with exp backoff.
 - **Sharing** — per-ship roles (viewer/commenter/editor/owner) + revocable
   share-link tokens for collaborators without a ship.
+- **Chat** — a built-in chatroom per space (Files/**Chat** tabs) plus 1:1
+  direct messages (the **Messages** view), with unread badges, live over SSE.
 - **A11y + mobile** — keyboard nav, focus traps + focus-visible rings,
   truthful ARIA roles/labels, screen-reader live regions, responsive
   layout down to phones, Cmd+K command palette, `?` shortcuts help.
@@ -64,6 +66,29 @@ org-owned container — instead of a single person. That is what makes it a
   space never weakens an explicit share.
 - **Directory** — every member can see the roster (who's on the team and their
   role), on both hosted and joined spaces.
+
+## Chat & messaging
+
+The whole team already works in Drive, so conversation lives there too — no
+second app to run.
+
+- **Space rooms** — every space has a built-in chatroom, opened from the
+  **Chat** tab next to Files. Any member can post; the host ship is the single
+  writer and ordering authority, so everyone sees the same thread in the same
+  order, with named authors. Messages fan out live to all members over the
+  space's existing `/space/<id>` channel. An unread badge (on the space in the
+  sidebar and on the tab) counts messages since you last looked; a message's
+  author or a space admin can delete it.
+- **Direct messages** — 1:1 DMs with any ship, from the **Messages** view in
+  the sidebar. DMs are peer-to-peer: each side stores its own copy and messages
+  are delivered ship-to-ship (no host, no membership — message anyone). The
+  inbox lists every conversation with a preview and unread count, and a rail
+  badge totals your unread DMs. On a phone it's a single pane at a time (inbox →
+  thread → back).
+- **Live + trustworthy** — new messages arrive over the same SSE stream as the
+  rest of the app (auto-reconnect, catch-up on reconnect). Authors are
+  cryptographic ship identities stamped by the receiving ship, so a sender
+  can't be spoofed.
 
 ### Running Drive for a company
 

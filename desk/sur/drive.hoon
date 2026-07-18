@@ -41,6 +41,36 @@
 +$  space-invite-notice   [=space-id name=@t =space-role]
 +$  space-invite-decline  [=space-id]
 ::
+::  ===  chat: per-space rooms + 1:1 direct messages  ===================
+::  A single message. `at` is the send time; the space host (for room
+::  messages) or the sender (for DMs) mints the id + stamps the time.
++$  msg-id  @uv
++$  chat-msg
+  $:  =msg-id
+      author=@p
+      text=@t
+      at=@da
+  ==
+::  a 1:1 DM conversation with one counterparty. `msgs` newest-first, capped;
+::  `read` is the timestamp through which we've marked the thread read (drives
+::  the unread badge).
++$  dm-thread
+  $:  msgs=(list chat-msg)
+      read=@da
+  ==
+::  member → host: post to / delete from a space's room. The host is the
+::  single writer + ordering authority, mirroring the /doc owner model.
++$  space-chat-poke
+  $:  =space-id
+      $=  act
+      $%  [%post text=@t]
+          [%delete =msg-id]
+      ==
+  ==
+::  ship → ship DM delivery. The receiver stamps author=src (unspoofable);
+::  the sender supplies the id + its own send time.
++$  dm-poke  [=msg-id text=@t at=@da]
+::
 +$  comment
   $:  author=@p
       text=@t
@@ -149,6 +179,10 @@
       [%space-doc-gone =doc-id]              ::  a doc left the space
       [%space-roster members=(map @p space-role)]  ::  the full member roster
       [%space-kicked ~]                      ::  you were removed / space deleted
+      ::  per-space chatroom, fanned over /space/<id> to every member ship
+      [%space-chat-log msgs=(list chat-msg)]  ::  recent history burst (on watch)
+      [%space-chat-msg =chat-msg]             ::  a new message posted to the room
+      [%space-chat-del =msg-id]               ::  a message was deleted
   ==
 ::
 ::  editor-ship → owner-ship comment mutations (mirrors can't edit
@@ -220,5 +254,12 @@
       [%invite-to-space =space-id who=@p =space-role]
       [%accept-space-invite =space-id]
       [%decline-space-invite =space-id]
+      ::  chat: post/delete in a space room; send/read/delete a 1:1 DM
+      [%post-message space=space-id text=@t]
+      [%delete-message space=space-id =msg-id]
+      [%read-space space=space-id]
+      [%send-dm who=@p text=@t]
+      [%delete-dm who=@p =msg-id]
+      [%read-dm who=@p]
   ==
 --

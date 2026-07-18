@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact';
 import { LeftRail, type RailKey } from './LeftRail';
 
 type Props = {
-  active: RailKey | 'space';
+  active: RailKey | 'space' | 'dm';
   activeSpaceId?: string | null;
   ship: string;
   navigate: (path: string) => void;

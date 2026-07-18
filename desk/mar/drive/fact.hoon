@@ -25,6 +25,15 @@
       =/  ms-per-sec=@dr  (div ~s1 1.000)
       ?:  (lth da ~1970.1.1)  0
       (div (sub da ~1970.1.1) ms-per-sec)
+    =/  msg-to-json
+      |=  m=chat-msg
+      ^-  ^json
+      %-  pairs
+      :~  id+s+(scot %uv msg-id.m)
+          author+s+(scot %p author.m)
+          text+s+text.m
+          at+(numb (da-to-millis at.m))
+      ==
     ?-  -.fac
         %snapshot
       %-  pairs
@@ -132,6 +141,21 @@
         %space-kicked
       %-  pairs
       :~  type+s+'space-kicked'
+      ==
+        %space-chat-log
+      %-  pairs
+      :~  type+s+'space-chat-log'
+          msgs+a+(turn msgs.fac msg-to-json)
+      ==
+        %space-chat-msg
+      %-  pairs
+      :~  type+s+'space-chat-msg'
+          msg+(msg-to-json chat-msg.fac)
+      ==
+        %space-chat-del
+      %-  pairs
+      :~  type+s+'space-chat-del'
+          id+s+(scot %uv msg-id.fac)
       ==
     ==
   --

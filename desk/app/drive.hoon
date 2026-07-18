@@ -15,7 +15,8 @@
 |%
 +$  card  card:agent:gall
 +$  versioned-state
-  $%  state-11
+  $%  state-12
+      state-11
       state-10
       state-9
       state-8
@@ -27,6 +28,30 @@
       state-2-pre-octs
       state-1-pre-folders
       state-0-pre-image
+  ==
++$  state-12
+  $:  %12
+      docs=(map doc-id document)
+      mirrors=(map doc-id mirror)
+      tokens=(map @uv token-grant)
+      sessions=(map @uv token-session)
+      sse-clients=(map @ta sse-sub)
+      blobs=(map doc-id file-blob)
+      children=(map doc-id (set doc-id))     ::  parent-id → children; 0v0=root
+      pending-sse=(list pending-sse-event)   ::  queued for next behn tick
+      invites=(map doc-id invite)            ::  shares pushed to us by owners
+      starred=(set doc-id)                   ::  any doc-id: owned or mirrored
+      thumbs=(map doc-id octs)               ::  client-generated image thumbnails
+      spaces=(map space-id space)            ::  shared spaces we host
+      doc-space=(map doc-id space-id)        ::  which space a doc belongs to
+      space-mirrors=(map space-id space-mirror)  ::  spaces we joined elsewhere
+      space-invites=(map space-id space-invite)  ::  pending invites pushed to us
+      ::  chat (v12): per-space rooms + 1:1 DMs. For a space we host, its log
+      ::  is authoritative; for one we joined, the host mirrors it here (same
+      ::  map, keyed by space-id). Logs are newest-first and capped.
+      space-chat=(map space-id (list chat-msg))
+      space-read=(map space-id @da)          ::  last-read stamp per space
+      dms=(map @p dm-thread)                 ::  1:1 conversations by counterparty
   ==
 +$  state-11
   $:  %11
@@ -286,7 +311,7 @@
 --
 ::
 %-  agent:dbug
-=|  state-11
+=|  state-12
 =*  state  -
 ^-  agent:gall
 ::
@@ -541,13 +566,27 @@
         *(map space-id space-mirror)
         *(map space-id space-invite)
     ==
+  ::  v11 → v12: add empty per-space chat logs + read stamps + DM threads.
+  =/  up-to-12
+    |=  s11=state-11
+    ^-  state-12
+    :*  %12
+        docs.s11  mirrors.s11  tokens.s11  sessions.s11  sse-clients.s11
+        blobs.s11  children.s11  pending-sse.s11  invites.s11  starred.s11
+        thumbs.s11  spaces.s11  doc-space.s11  space-mirrors.s11
+        space-invites.s11
+        *(map space-id (list chat-msg))
+        *(map space-id @da)
+        *(map @p dm-thread)
+    ==
   =/  s  !<(versioned-state old)
   ?-  -.s
-      %11  [rebind this(state s)]
-      %10  [rebind this(state (up-to-11 s))]
-      %9  [rebind this(state (up-to-11 (up-to-10 s)))]
-      %8  [rebind this(state (up-to-11 (up-to-10 (up-to-9 s))))]
-      %7  [rebind this(state (up-to-11 (up-to-10 (up-to-9 (up-to-8 s)))))]
+      %12  [rebind this(state s)]
+      %11  [rebind this(state (up-to-12 s))]
+      %10  [rebind this(state (up-to-12 (up-to-11 s)))]
+      %9  [rebind this(state (up-to-12 (up-to-11 (up-to-10 s))))]
+      %8  [rebind this(state (up-to-12 (up-to-11 (up-to-10 (up-to-9 s)))))]
+      %7  [rebind this(state (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s))))))]
       %6
     =/  upgraded-docs=(map doc-id state-7-document)
       (~(run by docs-pre-trash.s) upgrade-doc-6-to-7)
@@ -562,7 +601,7 @@
           children.s
           pending-sse.s
       ==
-    [rebind this(state (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7)))))]
+    [rebind this(state (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7))))))]
       %5
     =/  upgraded-docs=(map doc-id state-7-document)
       (~(run by docs-pre-anchor.s) upgrade-doc-5-to-6)
@@ -577,7 +616,7 @@
           children.s
           pending-sse.s
       ==
-    [rebind this(state (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7)))))]
+    [rebind this(state (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7))))))]
       %4
     =/  upgraded-docs=(map doc-id state-7-document)
       (~(run by docs-pre-comments.s) upgrade-doc-4-to-5)
@@ -592,7 +631,7 @@
           children.s
           pending-sse.s
       ==
-    [rebind this(state (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7)))))]
+    [rebind this(state (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7))))))]
       %3
     =/  upgraded-docs=(map doc-id state-7-document)
       (~(run by docs.s) upgrade-doc-4-to-5)
@@ -607,7 +646,7 @@
           children.s
           *(list pending-sse-event)
       ==
-    [rebind this(state (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7)))))]
+    [rebind this(state (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7))))))]
       %2
     =/  upgraded-docs=(map doc-id state-7-document)
       (~(run by docs-pre-octs.s) upgrade-doc-2-to-3)
@@ -624,7 +663,7 @@
           children.s
           *(list pending-sse-event)
       ==
-    [rebind this(state (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7)))))]
+    [rebind this(state (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7))))))]
       %1
     =/  upgraded-docs=(map doc-id state-7-document)
       (~(run by docs-old.s) upgrade-doc-1-to-3)
@@ -643,7 +682,7 @@
           (rebuild-children upgraded-docs)
           *(list pending-sse-event)
       ==
-    [rebind this(state (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7)))))]
+    [rebind this(state (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7))))))]
       %0
     =/  upgraded-docs=(map doc-id state-7-document)
       (~(run by docs-v0.s) upgrade-doc-1-to-3)
@@ -660,7 +699,7 @@
           (rebuild-children upgraded-docs)
           *(list pending-sse-event)
       ==
-    [rebind this(state (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7)))))]
+    [rebind this(state (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7))))))]
   ==
 ::
 ++  on-poke
@@ -699,7 +738,7 @@
 ::
 ::  Helper core. Sample carries bowl + state. Helpers return (quip card _state).
 ::
-|_  [=bowl:gall state=state-11]
+|_  [=bowl:gall state=state-12]
 +*  docs         docs.state
     mirrors      mirrors.state
     tokens       tokens.state
@@ -715,6 +754,9 @@
     doc-space    doc-space.state
     space-mirrors  space-mirrors.state
     space-invites  space-invites.state
+    space-chat   space-chat.state
+    space-read   space-read.state
+    dms          dms.state
 ::
 ::  =================================================================
 ::  init / dispatchers
@@ -769,6 +811,14 @@
       %drive-space-invite-decline
     =+  !<(d=space-invite-decline vase)
     (recv-space-invite-decline src.bowl d)
+    ::
+      %drive-space-chat-poke
+    =+  !<(p=space-chat-poke vase)
+    (recv-space-chat-poke src.bowl p)
+    ::
+      %drive-dm-poke
+    =+  !<(d=dm-poke vase)
+    (recv-dm-poke src.bowl d)
   ==
 ::
 ++  handle-watch
@@ -1011,6 +1061,14 @@
       [%x %space-docs @ ~]
     =/  sid  (slav %uv i.t.t.path)
     ``json+!>((enjs-space-docs sid))
+      [%x %chat @ ~]
+    =/  sid  (slav %uv i.t.t.path)
+    ``json+!>((enjs-chat sid))
+      [%x %dms ~]
+    ``json+!>(enjs-dms)
+      [%x %dm @ ~]
+    =/  who  (rash i.t.t.path fed:ag)
+    ``json+!>((enjs-dm who))
       [%x %health ~]
     ``json+!>(enjs-health)
   ==
@@ -1396,6 +1454,12 @@
       [%invite-to-space (ot ~[space+uv-fist who+p-fist role+sr-fist])]
       [%accept-space-invite uv-fist]
       [%decline-space-invite uv-fist]
+      [%post-message (ot ~[space+uv-fist text+so])]
+      [%delete-message (ot ~[space+uv-fist id+uv-fist])]
+      [%read-space uv-fist]
+      [%send-dm (ot ~[who+p-fist text+so])]
+      [%delete-dm (ot ~[who+p-fist id+uv-fist])]
+      [%read-dm p-fist]
   ==
 ::
 ::  =================================================================
@@ -2190,6 +2254,67 @@
             !>(`space-invite-decline`[space-id.action])
         ==
     ==
+    ::
+      %post-message
+    ::  A room we host → write + fan directly. A room we joined → ask the host
+    ::  to post; the fan comes back to us over our /space subscription.
+    ?:  (~(has by spaces) space.action)
+      (host-post-message space.action src.bowl text.action)
+    ?.  (~(has by space-mirrors) space.action)  `state
+    :_  state
+    :~  :*  %pass  /space-chat/(scot %uv space.action)
+            %agent  [host:(~(got by space-mirrors) space.action) %drive]
+            %poke  %drive-space-chat-poke
+            !>(`space-chat-poke`[space.action %post text.action])
+        ==
+    ==
+    ::
+      %delete-message
+    ?:  (~(has by spaces) space.action)
+      (host-delete-message space.action msg-id.action src.bowl)
+    ?.  (~(has by space-mirrors) space.action)  `state
+    :_  state
+    :~  :*  %pass  /space-chat/(scot %uv space.action)
+            %agent  [host:(~(got by space-mirrors) space.action) %drive]
+            %poke  %drive-space-chat-poke
+            !>(`space-chat-poke`[space.action %delete msg-id.action])
+        ==
+    ==
+    ::
+      %read-space
+    =.  state  state(space-read (~(put by space-read) space.action now.bowl))
+    fanout-listing
+    ::
+      %send-dm
+    =/  m=chat-msg  [fresh-msg-id our.bowl text.action now.bowl]
+    =/  th  (fall (~(get by dms) who.action) *dm-thread)
+    ::  our own send is already read; stamp read=now so it isn't "unread".
+    =.  state
+      %=  state
+        dms  (~(put by dms) who.action th(msgs (push-msg msgs.th m), read now.bowl))
+      ==
+    =^  app  state  (push-app-event (dm-ping who.action))
+    ?:  =(who.action our.bowl)  [app state]     ::  note-to-self: no wire poke
+    =/  poke=card
+      :*  %pass  /dm/(scot %p who.action)
+          %agent  [who.action %drive]
+          %poke  %drive-dm-poke
+          !>(`dm-poke`[msg-id.m text.action at.m])
+      ==
+    [[poke app] state]
+    ::
+      %delete-dm
+    ::  local-only: removes the message from our copy of the thread.
+    =/  th  (~(get by dms) who.action)
+    ?~  th  `state
+    =/  msgs2  (skip msgs.u.th |=(m=chat-msg =(msg-id.m msg-id.action)))
+    =.  state  state(dms (~(put by dms) who.action u.th(msgs msgs2)))
+    (push-app-event (dm-ping who.action))
+    ::
+      %read-dm
+    =/  th  (fall (~(get by dms) who.action) *dm-thread)
+    =.  state  state(dms (~(put by dms) who.action th(read now.bowl)))
+    fanout-listing
   ==
 ::
 ::  Forward a comment mutation from this (mirror) ship to the doc's owner.
@@ -2285,6 +2410,27 @@
   :~  (give-space-fact space-id.d %space-roster members.spc2)
       [%give %kick ~[/space/(scot %uv space-id.d)] `src]
   ==
+::  member → host: post to / delete from a room we host. Authorize against
+::  membership (silently drop non-members); the host is the single writer.
+++  recv-space-chat-poke
+  |=  [src=@p p=space-chat-poke]
+  ^-  (quip card _state)
+  =/  spc  (~(get by spaces) space-id.p)
+  ?~  spc  `state                              ::  we don't host this space
+  ?~  (~(get by members.u.spc) src)  `state    ::  not a member — ignore
+  ?-  -.act.p
+      %post    (host-post-message space-id.p src text.act.p)
+      %delete  (host-delete-message space-id.p msg-id.act.p src)
+  ==
+::  peer → us: a DM. Store it under the sender (author stamped = src, so it
+::  can't be spoofed) and ping our browsers.
+++  recv-dm-poke
+  |=  [src=@p d=dm-poke]
+  ^-  (quip card _state)
+  =/  m=chat-msg  [msg-id.d src text.d at.d]
+  =/  th  (fall (~(get by dms) src) *dm-thread)
+  =.  state  state(dms (~(put by dms) src th(msgs (push-msg msgs.th m))))
+  (push-app-event (dm-ping src))
 ::
 ::  =================================================================
 ::  Remote ship handlers
@@ -2469,6 +2615,97 @@
   ^-  card
   [%give %kick ~[/doc/(scot %uv did)] `who]
 ::
+::  =================================================================
+::  Chat helpers — per-space rooms + 1:1 DMs
+::  =================================================================
+::
+::  cap on stored messages per room / thread; logs are newest-first, so the
+::  oldest fall off the tail past the cap.
+++  chat-cap  ^-  @ud  500
+++  fresh-msg-id
+  ^-  msg-id
+  `@uv`(shaz (mix (mix eny.bowl `@`now.bowl) 'msg'))
+::  prepend a message to a newest-first log, capped.
+++  push-msg
+  |=  [log=(list chat-msg) m=chat-msg]
+  ^-  (list chat-msg)
+  (scag chat-cap `(list chat-msg)`[m log])
+::  one message as JSON (shared by the room + DM scries).
+++  chat-msg-json
+  |=  m=chat-msg
+  ^-  json
+  =,  enjs:format
+  %-  pairs
+  :~  id+s+(scot %uv msg-id.m)
+      author+s+(scot %p author.m)
+      text+s+text.m
+      at+(numb (da-to-millis at.m))
+  ==
+::  Queue a raw app-level (0v0 sentinel) SSE payload to every browser stream
+::  and arm the deferred flush. Mirrors fanout-listing with an arbitrary body.
+++  push-app-event
+  |=  payload=@t
+  ^-  (quip card _state)
+  =/  new-events=(list pending-sse-event)
+    %+  turn  (sse-clients-for 0v0)
+    |=(eid=@ta `pending-sse-event`[eid payload])
+  ?:  =(0 (lent new-events))  [~ state]
+  =/  was-empty=?  =(0 (lent pending-sse))
+  =.  state  state(pending-sse (weld pending-sse new-events))
+  ?:  was-empty  [~[[%pass /sse-flush %arvo %b %wait now.bowl]] state]
+  [~ state]
+::  "something changed in this room / thread — re-scry it" pings. The client
+::  refetches the panel + the listing (for unread badges) on receipt.
+++  space-chat-ping
+  |=  sid=space-id
+  ^-  @t
+  =,  enjs:format
+  (json-to-string (pairs ~[type+s+'space-chat' space+s+(scot %uv sid)]))
+++  dm-ping
+  |=  who=@p
+  ^-  @t
+  =,  enjs:format
+  (json-to-string (pairs ~[type+s+'dm' peer+s+(scot %p who)]))
+::  unread = peer-authored messages newer than our last-read stamp.
+++  space-unread
+  |=  sid=space-id
+  ^-  @ud
+  =/  log  (fall (~(get by space-chat) sid) ~)
+  =/  since  (fall (~(get by space-read) sid) *@da)
+  %+  roll  log
+  |=  [m=chat-msg acc=@ud]
+  ?:  ?&((gth at.m since) ?!(=(author.m our.bowl)))  +(acc)  acc
+++  dm-unread
+  |=  th=dm-thread
+  ^-  @ud
+  %+  roll  msgs.th
+  |=  [m=chat-msg acc=@ud]
+  ?:  ?&((gth at.m read.th) ?!(=(author.m our.bowl)))  +(acc)  acc
+::  Host-side: append a message to a room we host, fan it to every member
+::  ship over /space/<sid>, and ping our own browsers.
+++  host-post-message
+  |=  [sid=space-id author=@p text=@t]
+  ^-  (quip card _state)
+  =/  m=chat-msg  [fresh-msg-id author text now.bowl]
+  =/  log  (fall (~(get by space-chat) sid) ~)
+  =.  state  state(space-chat (~(put by space-chat) sid (push-msg log m)))
+  =^  app  state  (push-app-event (space-chat-ping sid))
+  :_  state
+  [(give-space-fact sid %space-chat-msg m) app]
+::  Host-side: delete a message from a room we host (author or manager), fan.
+++  host-delete-message
+  |=  [sid=space-id mid=msg-id who=@p]
+  ^-  (quip card _state)
+  =/  log  (fall (~(get by space-chat) sid) ~)
+  =/  hit  (skim log |=(m=chat-msg =(msg-id.m mid)))
+  ?~  hit  `state
+  ?.  ?|(=(author.i.hit who) (space-manager sid who))  `state
+  =/  log2  (skip log |=(m=chat-msg =(msg-id.m mid)))
+  =.  state  state(space-chat (~(put by space-chat) sid log2))
+  =^  app  state  (push-app-event (space-chat-ping sid))
+  :_  state
+  [(give-space-fact sid %space-chat-del mid) app]
+::
 ::  A member ship watches /space/<sid> to learn the space's roster role and
 ::  doc list. Authorize against membership (crash = negative watch-ack),
 ::  then burst the space meta + one %space-doc per live doc in the space.
@@ -2481,6 +2718,7 @@
   ?~  mr  ~|(%not-a-member !!)
   =/  meta-fact=fact  [%space-meta name.u.spc u.mr]
   =/  roster-fact=fact  [%space-roster members.u.spc]
+  =/  chat-fact=fact  [%space-chat-log (fall (~(get by space-chat) sid) ~)]
   =/  doc-cards=(list card)
     %+  turn  (docs-in-space sid)
     |=  [did=doc-id sd=space-doc]
@@ -2489,6 +2727,7 @@
   :_  state
   :*  [%give %fact ~ %drive-fact !>(meta-fact)]
       [%give %fact ~ %drive-fact !>(roster-fact)]
+      [%give %fact ~ %drive-fact !>(chat-fact)]
       doc-cards
   ==
 ::
@@ -2595,6 +2834,20 @@
       %space-kicked
     =^  feed  state  fanout-listing
     [feed state(space-mirrors (~(del by space-mirrors) sid))]
+      %space-chat-log
+    ::  full history burst from the host (on join / re-watch): replace ours.
+    =.  state  state(space-chat (~(put by space-chat) sid msgs.fact))
+    (push-app-event (space-chat-ping sid))
+      %space-chat-msg
+    =/  log  (fall (~(get by space-chat) sid) ~)
+    =.  state
+      state(space-chat (~(put by space-chat) sid (push-msg log chat-msg.fact)))
+    (push-app-event (space-chat-ping sid))
+      %space-chat-del
+    =/  log  (fall (~(get by space-chat) sid) ~)
+    =/  log2  (skip log |=(m=chat-msg =(msg-id.m msg-id.fact)))
+    =.  state  state(space-chat (~(put by space-chat) sid log2))
+    (push-app-event (space-chat-ping sid))
   ==
 ::
 ::  =================================================================
@@ -2641,6 +2894,12 @@
   ?:  ?=([%starred *] rest)
     [(send [200 ~ [%html drive-ui]]) state]
   ?:  ?=([%recent *] rest)
+    [(send [200 ~ [%html drive-ui]]) state]
+  ?:  ?=([%space *] rest)
+    [(send [200 ~ [%html drive-ui]]) state]
+  ?:  ?=([%messages *] rest)
+    [(send [200 ~ [%html drive-ui]]) state]
+  ?:  ?=([%dm *] rest)
     [(send [200 ~ [%html drive-ui]]) state]
   ?:  ?=([%t ~] rest)
     ::  Token URLs use a query param: /drive/t?k=<token>
@@ -3179,12 +3438,17 @@
         host+s+(scot %p host.inv)
         role+s+(scot %tas space-role.inv)
     ==
+  =/  dm-total=@ud
+    %+  roll  ~(val by dms)
+    |=  [th=dm-thread acc=@ud]
+    (add acc (dm-unread th))
   %-  pairs
   :~  owned+a+owned
       shared+a+shared
       mirrored+a+mirrored
       spaces+a+(weld hosted joined)
       space-invites+a+invite-list
+      dm-unread+(numb dm-total)
   ==
 ::
 ::  enjs-trash-listing: just the trashed-docs view. Each entry includes
@@ -3322,6 +3586,7 @@
       members+(numb ~(wyt by members.space))
       created+(numb (da-to-millis created.space))
       joined+b+|                               ::  we host this one
+      unread+(numb (space-unread sid))
   ==
 ::
 ::  summary for a space we JOINED (hosted elsewhere). Roster isn't mirrored,
@@ -3338,6 +3603,7 @@
       members+(numb 0)
       created+(numb 0)
       joined+b+&
+      unread+(numb (space-unread sid))
   ==
 ::
 ::  the doc list for a JOINED space (hosted elsewhere), from its mirror, as
@@ -3396,6 +3662,53 @@
       host+s+(scot %p host.u.sm)
       created+(numb 0)
       members+a+(render-members members.u.sm)
+  ==
+::
+::  recent messages in a space room (hosted or joined — both read the same
+::  space-chat map). Oldest-first for the client, plus our last-read stamp.
+++  enjs-chat
+  |=  sid=space-id
+  ^-  json
+  =,  enjs:format
+  =/  log  (flop (fall (~(get by space-chat) sid) ~))
+  =/  read  (fall (~(get by space-read) sid) *@da)
+  %-  pairs
+  :~  read+(numb (da-to-millis read))
+      messages+a+(turn log chat-msg-json)
+  ==
+::  DM inbox: one row per counterparty with the last message + unread count,
+::  most-recently-active first.
+++  enjs-dms
+  ^-  json
+  =,  enjs:format
+  =/  sorted
+    %+  sort  ~(tap by dms)
+    |=  [[* a=dm-thread] [* b=dm-thread]]
+    =/  la  ?~(msgs.a *@da at.i.msgs.a)
+    =/  lb  ?~(msgs.b *@da at.i.msgs.b)
+    (gth `@`la `@`lb)
+  :-  %a
+  %+  turn  sorted
+  |=  [who=@p th=dm-thread]
+  ^-  json
+  =/  last  msgs.th
+  %-  pairs
+  :~  peer+s+(scot %p who)
+      unread+(numb (dm-unread th))
+      last-at+(numb ?~(last 0 (da-to-millis at.i.last)))
+      last-text+s+?~(last '' text.i.last)
+      last-author+s+?~(last '' (scot %p author.i.last))
+  ==
+::  full DM thread with one counterparty, oldest-first + our read stamp.
+++  enjs-dm
+  |=  who=@p
+  ^-  json
+  =,  enjs:format
+  =/  th  (fall (~(get by dms) who) *dm-thread)
+  %-  pairs
+  :~  peer+s+(scot %p who)
+      read+(numb (da-to-millis read.th))
+      messages+a+(turn (flop msgs.th) chat-msg-json)
   ==
 ::
 ++  acl-to-json
@@ -3628,13 +3941,15 @@
   ^-  json
   =,  enjs:format
   %-  pairs
-  :~  version+s+'gw-0.1'
-      state-version+(numb 11)
+  :~  version+s+'gw-0.2'
+      state-version+(numb 12)
       docs+(numb ~(wyt by docs))
       mirrors+(numb ~(wyt by mirrors))
       tokens+(numb ~(wyt by tokens))
       sessions+(numb ~(wyt by sessions))
       sse-clients+(numb ~(wyt by sse-clients))
       pending-sse+(numb (lent pending-sse))
+      spaces+(numb ~(wyt by spaces))
+      dms+(numb ~(wyt by dms))
   ==
 --

@@ -1,7 +1,7 @@
 import { useState } from 'preact/hooks';
 import { dropOnto, isDragging } from '../ui/dragState';
 import { createSpace } from '../api';
-import { useSpaces, useSpaceInvites } from '../useSpaces';
+import { useSpaces, useSpaceInvites, useDmUnread } from '../useSpaces';
 import { isJoinedSpace } from '../spaces';
 import { promptDialog } from '../ui/dialogs';
 import { toast } from '../ui/toast';
@@ -12,13 +12,15 @@ export type RailKey =
   | 'files'
   | 'starred'
   | 'recent'
+  | 'messages'
   | 'notes'
   | 'photos'
   | 'trash';
 
 type Props = {
-  // 'space' isn't a rail-nav item — it highlights the space switcher instead.
-  active: RailKey | 'space';
+  // 'space' isn't a rail-nav item — it highlights the space switcher instead;
+  // 'dm' is a Messages sub-route, so it highlights the Messages item.
+  active: RailKey | 'space' | 'dm';
   // The active space-id when on a space route, so the switcher can highlight it.
   activeSpaceId?: string | null;
   ship: string;
@@ -72,6 +74,16 @@ const items: Array<{
     ),
   },
   {
+    key: 'messages',
+    label: 'Messages',
+    href: '/drive/messages',
+    icon: (
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+        <path d="M4 4h16c1.1 0 2 .9 2 2v9a2 2 0 0 1-2 2H8l-4 4V6c0-1.1.9-2 2-2z" />
+      </svg>
+    ),
+  },
+  {
     key: 'notes',
     label: 'Notes',
     href: '/drive/notes',
@@ -109,11 +121,14 @@ export function LeftRail({ active, activeSpaceId, ship, navigate }: Props) {
   const [showJoin, setShowJoin] = useState(false);
   const spaces = useSpaces();
   const invites = useSpaceInvites();
+  const dmUnread = useDmUnread();
   const go = (href: string) => (e: Event) => {
     e.preventDefault();
     navigate(href);
   };
 
+  // A DM thread route highlights the Messages rail item.
+  const activeKey = active === 'dm' ? 'messages' : active;
   // "Personal" is the active space entry whenever we're not inside a space.
   const inSpace = active === 'space';
 
@@ -148,14 +163,15 @@ export function LeftRail({ active, activeSpaceId, ship, navigate }: Props) {
       <nav class="rail-nav" aria-label="Sections">
         {items.map((it) => {
           const isFiles = it.key === 'files';
+          const isMessages = it.key === 'messages';
           return (
             <a
               key={it.key}
               href={it.href}
-              class={`rail-item ${active === it.key ? 'active' : ''} ${
+              class={`rail-item ${activeKey === it.key ? 'active' : ''} ${
                 isFiles && dropTarget ? 'drop-hover' : ''
               }`}
-              aria-current={active === it.key ? 'page' : undefined}
+              aria-current={activeKey === it.key ? 'page' : undefined}
               onClick={go(it.href)}
               onDragOver={
                 isFiles
@@ -178,7 +194,19 @@ export function LeftRail({ active, activeSpaceId, ship, navigate }: Props) {
                   : undefined
               }
             >
-              <span class="rail-icon" aria-hidden="true">{it.icon}</span>
+              <span class="rail-icon" aria-hidden="true">
+                {it.icon}
+                {isMessages && dmUnread > 0 && (
+                  <span
+                    class="rail-dot"
+                    data-testid="dm-unread-badge"
+                    title={`${dmUnread} unread message${dmUnread === 1 ? '' : 's'}`}
+                    aria-label={`${dmUnread} unread message${dmUnread === 1 ? '' : 's'}`}
+                  >
+                    {dmUnread > 9 ? '9+' : dmUnread}
+                  </span>
+                )}
+              </span>
               <span class="rail-label">{it.label}</span>
             </a>
           );
@@ -261,6 +289,15 @@ export function LeftRail({ active, activeSpaceId, ship, navigate }: Props) {
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
                   <path d="M3 21V7l7-4 7 4v14h-5v-5h-4v5zM19 21V9l2 1.2V21z" />
                 </svg>
+                {s.unread > 0 && !activeSpace && (
+                  <span
+                    class="rail-dot"
+                    title={`${s.unread} unread message${s.unread === 1 ? '' : 's'}`}
+                    aria-label={`${s.unread} unread`}
+                  >
+                    {s.unread > 9 ? '9+' : s.unread}
+                  </span>
+                )}
               </span>
               <span class="rail-label">{label}</span>
             </a>

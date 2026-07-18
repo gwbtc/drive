@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import { listDocs, type SpaceSummary, type SpaceInvite } from './api';
+import { listDocs, getDms, type SpaceSummary, type SpaceInvite, type DmSummary } from './api';
 import { listingFeed } from './listingFeed';
 
 // Live list of the shared spaces the caller belongs to. Mirrors the listing-
@@ -19,11 +19,15 @@ export function useSpaces(): SpaceSummary[] {
       }
     };
     void refresh();
-    const unsub = listingFeed.subscribe(refresh);
+    const unsubL = listingFeed.subscribe(refresh);
+    // A new room message bumps a space's unread badge without a listing ping,
+    // so refresh on 'space-chat' too (keeps the rail dot live).
+    const unsubC = listingFeed.on('space-chat', refresh);
     const id = setInterval(refresh, 60000);
     return () => {
       cancelled = true;
-      unsub();
+      unsubL();
+      unsubC();
       clearInterval(id);
     };
   }, []);
@@ -56,4 +60,58 @@ export function useSpaceInvites(): SpaceInvite[] {
     };
   }, []);
   return invites;
+}
+
+// Total unread DM count (listing.dmUnread) for the Messages rail badge. Also
+// re-fetches on 'dm' events so the badge reacts the moment a DM arrives.
+export function useDmUnread(): number {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const l = await listDocs();
+        if (!cancelled) setN(l.dmUnread ?? 0);
+      } catch {
+        /* keep the stale count */
+      }
+    };
+    void refresh();
+    const unsubL = listingFeed.subscribe(refresh);
+    const unsubD = listingFeed.on('dm', refresh);
+    const id = setInterval(refresh, 60000);
+    return () => {
+      cancelled = true;
+      unsubL();
+      unsubD();
+      clearInterval(id);
+    };
+  }, []);
+  return n;
+}
+
+// Live DM inbox: one row per counterparty, most-recently-active first. Re-
+// fetches on 'dm' events (and the slow poll) so new/updated threads surface.
+export function useDmSummaries(): DmSummary[] {
+  const [rows, setRows] = useState<DmSummary[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const r = await getDms();
+        if (!cancelled) setRows(r);
+      } catch {
+        /* keep the stale list */
+      }
+    };
+    void refresh();
+    const unsub = listingFeed.on('dm', refresh);
+    const id = setInterval(refresh, 60000);
+    return () => {
+      cancelled = true;
+      unsub();
+      clearInterval(id);
+    };
+  }, []);
+  return rows;
 }

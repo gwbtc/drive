@@ -984,8 +984,59 @@ describe('spaces & membership', () => {
     expect(d.space == null).toBe(true);
   });
 
-  test('health reports gw state-version 11', async () => {
+  test('health reports gw state-version 12', async () => {
     const j = await scry('health');
-    expect(j['state-version']).toBe(11);
+    expect(j['state-version']).toBe(12);
+  });
+});
+
+// ---------- chat: per-space rooms + 1:1 DMs ----------
+
+describe('chat: rooms + DMs', () => {
+  test('post to a hosted room; chat scry returns it (author + text)', async () => {
+    const sid = await createSpace(`Chat ${RUN}`);
+    await actionOk({ 'post-message': { space: sid, text: 'hello room' } });
+    const chat = await scry(`chat/${sid}`);
+    const msgs = chat.messages as any[];
+    expect(msgs.length).toBe(1);
+    expect(msgs[0].text).toBe('hello room');
+    expect(msgs[0].author).toBe(`~${SHIP_NAME}`);
+    expect(typeof msgs[0].at).toBe('number');
+  });
+
+  test('room messages come back oldest-first', async () => {
+    const sid = await createSpace(`Order ${RUN}`);
+    await actionOk({ 'post-message': { space: sid, text: 'first' } });
+    await actionOk({ 'post-message': { space: sid, text: 'second' } });
+    const chat = await scry(`chat/${sid}`);
+    expect((chat.messages as any[]).map((m) => m.text)).toEqual(['first', 'second']);
+  });
+
+  test('delete a room message removes it', async () => {
+    const sid = await createSpace(`Del ${RUN}`);
+    await actionOk({ 'post-message': { space: sid, text: 'oops' } });
+    let chat = await scry(`chat/${sid}`);
+    const id = (chat.messages as any[])[0].id;
+    await actionOk({ 'delete-message': { space: sid, id } });
+    chat = await scry(`chat/${sid}`);
+    expect((chat.messages as any[]).length).toBe(0);
+  });
+
+  test('DM to self stores + reads back; inbox lists the thread', async () => {
+    await actionOk({ 'send-dm': { who: SHIP_NAME, text: 'note to self' } });
+    const thread = await scry(`dm/${SHIP_NAME}`);
+    expect((thread.messages as any[]).some((m) => m.text === 'note to self')).toBe(true);
+    const dms = (await scry('dms')) as any[];
+    const row = dms.find((d) => d.peer === `~${SHIP_NAME}`);
+    expect(row).toBeDefined();
+    expect(row['last-text']).toBe('note to self');
+    // our own message is already read → no unread
+    expect(row.unread).toBe(0);
+  });
+
+  test('health counts dms + spaces', async () => {
+    const j = await scry('health');
+    expect(j.dms).toBeGreaterThanOrEqual(1);
+    expect(j.spaces).toBeGreaterThanOrEqual(1);
   });
 });

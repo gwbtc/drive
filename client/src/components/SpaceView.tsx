@@ -16,6 +16,7 @@ import {
 import { FilesRow } from './FilesRow';
 import { SpaceMembersDialog } from './SpaceMembersDialog';
 import { SpaceDirectory } from './SpaceDirectory';
+import { SpaceChat } from './SpaceChat';
 import { listingFeed } from '../listingFeed';
 import { toast } from '../ui/toast';
 import { confirmDialog, promptDialog } from '../ui/dialogs';
@@ -26,6 +27,7 @@ import { spaceDocs, isJoinedSpace } from '../spaces';
 
 type Props = {
   spaceId: string;
+  tab: 'files' | 'chat';
   ship: string;
   navigate: (path: string) => void;
 };
@@ -37,7 +39,7 @@ type Props = {
 //   - JOINED (joined:true): the space is hosted elsewhere, so its docs aren't
 //     in our `owned` — we fetch them from the space-docs scry, open them as
 //     remote/mirrored docs, and offer "Leave" instead of member management.
-export function SpaceView({ spaceId, ship, navigate }: Props) {
+export function SpaceView({ spaceId, tab, ship, navigate }: Props) {
   const [owned, setOwned] = useState<DocSummary[]>([]);
   const [spaces, setSpaces] = useState<SpaceSummary[]>([]);
   // Docs of a JOINED space (from the space-docs scry). Empty for hosted spaces.
@@ -264,7 +266,7 @@ export function SpaceView({ spaceId, ship, navigate }: Props) {
   const title = space?.name || 'Space';
 
   return (
-    <div class="files">
+    <div class={`files${tab === 'chat' ? ' files-chat' : ''}`}>
       <header class="files-header">
         <div class="space-head">
           <h1 class="view-title">{title}</h1>
@@ -309,15 +311,19 @@ export function SpaceView({ spaceId, ship, navigate }: Props) {
               </>
             ) : (
               <>
-                <button class="btn" onClick={() => void onNewDoc('text')}>
-                  + Document
-                </button>
-                <button class="btn" onClick={() => void onNewDoc('sheet')}>
-                  + Sheet
-                </button>
-                <button class="btn" onClick={() => void onNewDoc('note')}>
-                  + Note
-                </button>
+                {tab === 'files' && (
+                  <>
+                    <button class="btn" onClick={() => void onNewDoc('text')}>
+                      + Document
+                    </button>
+                    <button class="btn" onClick={() => void onNewDoc('sheet')}>
+                      + Sheet
+                    </button>
+                    <button class="btn" onClick={() => void onNewDoc('note')}>
+                      + Note
+                    </button>
+                  </>
+                )}
                 {canManage ? (
                   // Owner/admin: the full management dialog (edit roles, invite,
                   // remove). It doubles as the member directory for them.
@@ -344,6 +350,45 @@ export function SpaceView({ spaceId, ship, navigate }: Props) {
         )}
       </header>
 
+      {space && (
+        <nav class="space-tabs" aria-label="Space sections">
+          <a
+            class={`space-tab ${tab === 'files' ? 'active' : ''}`}
+            href={`/drive/space/${spaceId}`}
+            aria-current={tab === 'files' ? 'page' : undefined}
+            onClick={(e: MouseEvent) => {
+              e.preventDefault();
+              navigate(`/drive/space/${spaceId}`);
+            }}
+          >
+            Files
+          </a>
+          <a
+            class={`space-tab ${tab === 'chat' ? 'active' : ''}`}
+            href={`/drive/space/${spaceId}/chat`}
+            data-testid="space-chat-tab"
+            aria-current={tab === 'chat' ? 'page' : undefined}
+            onClick={(e: MouseEvent) => {
+              e.preventDefault();
+              navigate(`/drive/space/${spaceId}/chat`);
+            }}
+          >
+            Chat
+            {space.unread > 0 && tab !== 'chat' && (
+              <span class="tab-dot" aria-label={`${space.unread} unread`}>
+                {space.unread > 9 ? '9+' : space.unread}
+              </span>
+            )}
+          </a>
+        </nav>
+      )}
+
+      {tab === 'chat' && space && (
+        <SpaceChat spaceId={spaceId} me={ship} canPost={true} />
+      )}
+
+      {tab === 'files' && (
+        <>
       {loading && <div class="muted" role="status">Loading…</div>}
       {!loading && error && <ViewError onRetry={refresh} />}
       {!loading && !error && !space && (
@@ -386,6 +431,8 @@ export function SpaceView({ spaceId, ship, navigate }: Props) {
             />
           ))}
         </ul>
+      )}
+        </>
       )}
 
       {showMembers && space && (

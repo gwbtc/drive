@@ -525,3 +525,129 @@ describe('space revocation & freshness', () => {
     }, 60000);
   }, 120000);
 });
+
+// ---------- chat: cross-ship rooms + DMs ----------
+
+describe('cross-ship space chat', () => {
+  test('a member on B posts to A-hosted room; both ships see it, ordered', async () => {
+    const sid = await createSpaceA(`chat-space-${RUN}`);
+    await action(A, { 'add-member': { space: sid, who: SHIP_B, role: 'editor' } });
+    await action(B, { 'join-space': { host: SHIP_A, space: sid } });
+
+    // Wait for B's membership to settle (real role propagated).
+    await waitFor(async () => {
+      const l = await scry(B, 'listing');
+      const s = (l.spaces as any[]).find((x) => x.id === sid && x.joined);
+      return s && s.role === 'editor' ? s : undefined;
+    }, 60000);
+
+    // A posts, then B posts. Host A is the single writer + ordering authority.
+    await action(A, { 'post-message': { space: sid, text: 'from host' } });
+    await action(B, { 'post-message': { space: sid, text: 'from member' } });
+
+    // A's own room (authoritative) has both, oldest-first.
+    const onA = await waitFor(async () => {
+      const c = await scry(A, `chat/${sid}`);
+      const t = (c.messages as any[]).map((m) => m.text);
+      return t.includes('from host') && t.includes('from member') ? t : undefined;
+    }, 60000);
+    expect(onA).toEqual(['from host', 'from member']);
+
+    // B's mirror of the room (fanned over the /space channel) has both too, and
+    // the member's own message shows the correct (B) author.
+    const onB = await waitFor(async () => {
+      const c = await scry(B, `chat/${sid}`);
+      const texts = (c.messages as any[]).map((m) => m.text);
+      return texts.includes('from host') && texts.includes('from member')
+        ? (c.messages as any[])
+        : undefined;
+    }, 60000);
+    expect(onB.map((m: any) => m.text)).toEqual(['from host', 'from member']);
+    const memberMsg = onB.find((m: any) => m.text === 'from member');
+    expect(memberMsg.author).toBe(`~${SHIP_B}`);
+
+    // A hasn't read the room; the member's message counts as unread for A.
+    const unreadA = await waitFor(async () => {
+      const l = await scry(A, 'listing');
+      const s = (l.spaces as any[]).find((x) => x.id === sid);
+      return s && s.unread >= 1 ? s.unread : undefined;
+    }, 60000);
+    expect(unreadA).toBeGreaterThanOrEqual(1);
+
+    // A reads → unread clears.
+    await action(A, { 'read-space': sid });
+    await waitFor(async () => {
+      const l = await scry(A, 'listing');
+      const s = (l.spaces as any[]).find((x) => x.id === sid);
+      return s && s.unread === 0 ? true : undefined;
+    }, 60000);
+  }, 120000);
+
+  test('deleting a room message fans the removal to members', async () => {
+    const sid = await createSpaceA(`chat-del-${RUN}`);
+    await action(A, { 'add-member': { space: sid, who: SHIP_B, role: 'editor' } });
+    await action(B, { 'join-space': { host: SHIP_A, space: sid } });
+    await waitFor(async () => {
+      const l = await scry(B, 'listing');
+      return (l.spaces as any[]).some((s) => s.id === sid && s.joined) ? true : undefined;
+    }, 60000);
+
+    await action(A, { 'post-message': { space: sid, text: 'delete me' } });
+    const seen = await waitFor(async () => {
+      const c = await scry(B, `chat/${sid}`);
+      return (c.messages as any[]).find((m) => m.text === 'delete me');
+    }, 60000);
+    await action(A, { 'delete-message': { space: sid, id: seen.id } });
+
+    // B's mirror loses the message via the %space-chat-del fan-out.
+    await waitFor(async () => {
+      const c = await scry(B, `chat/${sid}`);
+      return (c.messages as any[]).some((m) => m.text === 'delete me') ? undefined : true;
+    }, 60000);
+  }, 120000);
+});
+
+describe('cross-ship DMs', () => {
+  test('A DMs B; B sees it (unread); B replies; A sees the reply', async () => {
+    // A → B.
+    await action(A, { 'send-dm': { who: SHIP_B, text: `hi bus ${RUN}` } });
+
+    // B receives it (peer-to-peer poke), stored under ~nec, and unread.
+    const onB = await waitFor(async () => {
+      const t = await scry(B, `dm/${SHIP_A}`);
+      return (t.messages as any[]).some((m) => m.text === `hi bus ${RUN}`)
+        ? t
+        : undefined;
+    }, 60000);
+    const fromA = (onB.messages as any[]).find((m) => m.text === `hi bus ${RUN}`);
+    expect(fromA.author).toBe(`~${SHIP_A}`);
+
+    // B's inbox lists ~nec with unread >= 1 and the right preview.
+    const inboxB = await waitFor(async () => {
+      const dms = (await scry(B, 'dms')) as any[];
+      const row = dms.find((d) => d.peer === `~${SHIP_A}`);
+      return row && row.unread >= 1 ? row : undefined;
+    }, 60000);
+    expect(inboxB['last-text']).toBe(`hi bus ${RUN}`);
+
+    // B replies.
+    await action(B, { 'send-dm': { who: SHIP_A, text: `hi nec ${RUN}` } });
+    const onA = await waitFor(async () => {
+      const t = await scry(A, `dm/${SHIP_B}`);
+      return (t.messages as any[]).some((m) => m.text === `hi nec ${RUN}`)
+        ? t
+        : undefined;
+    }, 60000);
+    // A's thread has both directions.
+    const texts = (onA.messages as any[]).map((m) => m.text);
+    expect(texts).toContain(`hi bus ${RUN}`);
+    expect(texts).toContain(`hi nec ${RUN}`);
+
+    // A reading the thread clears its unread.
+    await action(A, { 'read-dm': SHIP_B });
+    await waitFor(async () => {
+      const l = await scry(A, 'listing');
+      return l.dmUnread === 0 || l['dm-unread'] === 0 ? true : undefined;
+    }, 60000);
+  }, 120000);
+});

@@ -9,6 +9,7 @@ import { TrashView } from './components/TrashView';
 import { StarredView } from './components/StarredView';
 import { RecentView } from './components/RecentView';
 import { SpaceView } from './components/SpaceView';
+import { MessagesView } from './components/MessagesView';
 import { Editor } from './components/Editor';
 import { ShortcutsHelp } from './components/ShortcutsHelp';
 import { recordRecent } from './recents';
@@ -260,7 +261,18 @@ export function App() {
         {route.kind === 'recent' && <RecentView navigate={navigate} />}
         {route.kind === 'trash' && <TrashView />}
         {route.kind === 'space' && (
-          <SpaceView spaceId={route.id} ship={whoami.ship} navigate={navigate} />
+          <SpaceView
+            spaceId={route.id}
+            tab={route.tab}
+            ship={whoami.ship}
+            navigate={navigate}
+          />
+        )}
+        {route.kind === 'messages' && (
+          <MessagesView me={whoami.ship} navigate={navigate} />
+        )}
+        {route.kind === 'dm' && (
+          <MessagesView peer={route.peer} me={whoami.ship} navigate={navigate} />
         )}
       </Shell>
     );

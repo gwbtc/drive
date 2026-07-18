@@ -46,17 +46,39 @@ describe('parseRoute', () => {
     });
   });
 
-  test('space route', () => {
+  test('space route defaults to the files tab', () => {
     expect(parseRoute('/drive/space/0vteam.abcde', '')).toEqual({
       kind: 'space',
       id: '0vteam.abcde',
+      tab: 'files',
     });
   });
 
-  test('space route ignores trailing path segments', () => {
+  test('space chat route', () => {
+    expect(parseRoute('/drive/space/0vteam.abcde/chat', '')).toEqual({
+      kind: 'space',
+      id: '0vteam.abcde',
+      tab: 'chat',
+    });
+  });
+
+  test('space route ignores unknown trailing path segments', () => {
     expect(parseRoute('/drive/space/0vteam/extra', '')).toEqual({
       kind: 'space',
       id: '0vteam',
+      tab: 'files',
+    });
+  });
+
+  test('messages inbox route', () => {
+    expect(parseRoute('/drive/messages', '')).toEqual({ kind: 'messages' });
+    expect(parseRoute('/drive/messages/', '')).toEqual({ kind: 'messages' });
+  });
+
+  test('dm thread route carries the ~-prefixed peer', () => {
+    expect(parseRoute('/drive/dm/~sampel-palnet', '')).toEqual({
+      kind: 'dm',
+      peer: '~sampel-palnet',
     });
   });
 

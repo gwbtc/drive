@@ -46,6 +46,39 @@ export type SpaceSummary = {
   // mirrored, so `members` and `created` are 0 placeholders and its docs come
   // from the space-docs scry rather than the listing's `owned`.
   joined: boolean;
+  // unread messages in this space's chatroom (peer-authored, since last read).
+  unread: number;
+};
+
+// One chat message, in a space room or a DM thread. `author` and `peer` are
+// ~-prefixed ship names; `at` is unix-ms.
+export type ChatMsg = {
+  id: string;
+  author: string; // "~bus"
+  text: string;
+  at: number;
+};
+
+// A space room's recent messages (oldest-first) + our last-read stamp.
+export type SpaceChat = {
+  messages: ChatMsg[];
+  read: number;
+};
+
+// One row in the DM inbox: a counterparty + a preview of the last message.
+export type DmSummary = {
+  peer: string; // "~bus"
+  unread: number;
+  'last-at': number;
+  'last-text': string;
+  'last-author': string;
+};
+
+// A full DM thread with one counterparty (oldest-first) + our last-read stamp.
+export type DmThread = {
+  peer: string;
+  read: number;
+  messages: ChatMsg[];
 };
 
 export type SpaceMember = {
@@ -89,6 +122,8 @@ export type Listing = {
   spaces: SpaceSummary[];
   // Pending space invitations awaiting the caller's accept/decline.
   spaceInvites: SpaceInvite[];
+  // Total unread DMs across all threads (drives the Messages rail badge).
+  dmUnread: number;
 };
 
 export type FolderContents = { items: DocSummary[] };
@@ -202,7 +237,11 @@ export async function listDocs(): Promise<Listing> {
   // The listing scry emits pending invitations under the hyphenated wire key
   // `space-invites`; surface them on the camelCase `spaceInvites` the client
   // reads. (owned/shared/mirrored/spaces already match the wire verbatim.)
-  return { ...j, spaceInvites: j['space-invites'] ?? [] } as Listing;
+  return {
+    ...j,
+    spaceInvites: j['space-invites'] ?? [],
+    dmUnread: j['dm-unread'] ?? 0,
+  } as Listing;
 }
 
 export async function listFolderContents(
@@ -453,6 +492,64 @@ export const setMemberRole = (space: string, who: string, role: SpaceRole) =>
 // Assign a doc to a space, or pass null to make it personal again.
 export const setDocSpace = (id: string, space: string | null) =>
   postAction({ 'set-doc-space': { id, space } });
+
+// === Chat: per-space rooms + 1:1 DMs =============================
+//
+// Post a message to a space's room. Works whether we host the space or joined
+// it (the backend routes to the host, which is the single writer). `space` is
+// a space-id (0v…). The message shows up when the room's fan-out lands.
+export const postMessage = (space: string, text: string) =>
+  postAction({ 'post-message': { space, text } });
+
+// Delete a room message (author or space admin/owner). `id` is a msg-id.
+export const deleteMessage = (space: string, id: string) =>
+  postAction({ 'delete-message': { space, id } });
+
+// Mark a space's room read (clears its unread badge). Takes a BARE space-id.
+export const readSpace = (space: string) =>
+  postAction({ 'read-space': space });
+
+// Recent messages in a space room (oldest-first) + our last-read stamp.
+export async function getSpaceChat(space: string): Promise<SpaceChat> {
+  const r = await fetch(`/~/scry/drive/chat/${space}.json`, {
+    credentials: 'include',
+  });
+  if (!r.ok) throw new Error(`space chat failed: ${r.status}`);
+  const j = await r.json();
+  return { messages: j?.messages ?? [], read: j?.read ?? 0 };
+}
+
+// Send a 1:1 DM. `to` is a ship; sent bare (the backend's ship parser rejects
+// the ~). Delivered to the peer's ship + echoed to our own browsers.
+export const sendDm = (to: string, text: string) =>
+  postAction({ 'send-dm': { who: to.replace(/^~/, ''), text } });
+
+// Delete a DM from OUR copy of the thread only (local). `id` is a msg-id.
+export const deleteDm = (peer: string, id: string) =>
+  postAction({ 'delete-dm': { who: peer.replace(/^~/, ''), id } });
+
+// Mark a DM thread read (clears its share of the unread badge). Bare ship.
+export const readDm = (peer: string) =>
+  postAction({ 'read-dm': peer.replace(/^~/, '') });
+
+// The DM inbox: one row per counterparty, most-recently-active first.
+export async function getDms(): Promise<DmSummary[]> {
+  const r = await fetch(`/~/scry/drive/dms.json`, { credentials: 'include' });
+  if (!r.ok) throw new Error(`dms failed: ${r.status}`);
+  const j = await r.json();
+  return (j ?? []) as DmSummary[];
+}
+
+// The full DM thread with one counterparty (oldest-first). `peer` sent bare.
+export async function getDmThread(peer: string): Promise<DmThread> {
+  const seg = peer.replace(/^~/, '');
+  const r = await fetch(`/~/scry/drive/dm/${seg}.json`, {
+    credentials: 'include',
+  });
+  if (!r.ok) throw new Error(`dm thread failed: ${r.status}`);
+  const j = await r.json();
+  return { peer: j?.peer ?? peer, read: j?.read ?? 0, messages: j?.messages ?? [] };
+}
 
 export async function uploadFile(
   file: File,

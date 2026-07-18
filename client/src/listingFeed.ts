@@ -1,28 +1,51 @@
-// Whole-drive change feed: one SSE stream (GET /drive/sse?feed=listing)
-// shared by every listing view. The agent pings {"type":"listing"} after
-// any listing-mutating action; subscribers re-fetch. Views keep a slow
-// fallback poll (the subscribe() return includes nothing fancy — they
-// keep their own 60s interval) because SSE can die silently.
+// App-wide event feed: one SSE stream (GET /drive/sse?feed=listing) shared by
+// every view. The agent pings it with typed JSON events:
+//   {"type":"listing"}                     — a listing-mutating action landed
+//   {"type":"space-chat","space":"0v..."}  — a room's messages changed
+//   {"type":"dm","peer":"~sampel"}         — a DM thread changed
+// Subscribers re-fetch on the events they care about. Views also keep a slow
+// fallback poll because SSE can die silently; on reconnect we re-notify every
+// listener so nothing missed while disconnected is lost.
 
 import { BASE } from './api';
 
-type Listener = () => void;
+type Handler = (payload: any) => void;
 
 const BACKOFF_MS = [1000, 2000, 4000, 8000, 15000, 30000];
 
-class ListingFeed {
-  private listeners = new Set<Listener>();
+class AppFeed {
+  private handlers = new Map<string, Set<Handler>>();
   private es: EventSource | null = null;
   private retryCount = 0;
   private retryTimer: number | null = null;
 
-  subscribe(fn: Listener): () => void {
-    this.listeners.add(fn);
-    if (this.listeners.size === 1) this.open();
+  // Subscribe to a specific event type. Returns an unsubscribe fn.
+  on(type: string, fn: Handler): () => void {
+    let set = this.handlers.get(type);
+    if (!set) {
+      set = new Set();
+      this.handlers.set(type, set);
+    }
+    set.add(fn);
+    if (this.total() === 1) this.open();
     return () => {
-      this.listeners.delete(fn);
-      if (this.listeners.size === 0) this.close();
+      const s = this.handlers.get(type);
+      if (!s) return;
+      s.delete(fn);
+      if (s.size === 0) this.handlers.delete(type);
+      if (this.total() === 0) this.close();
     };
+  }
+
+  // Back-compat sugar: listing-change subscribers take no payload.
+  subscribe(fn: () => void): () => void {
+    return this.on('listing', () => fn());
+  }
+
+  private total(): number {
+    let n = 0;
+    for (const s of this.handlers.values()) n += s.size;
+    return n;
   }
 
   private open() {
@@ -33,18 +56,24 @@ class ListingFeed {
     this.es.addEventListener('open', () => {
       if (this.retryCount > 0) {
         this.retryCount = 0;
-        // Missed pings while disconnected — refresh once on recovery.
-        this.notify();
+        // Missed events while disconnected — re-notify everyone so they
+        // re-fetch (payload null = "you may have missed something").
+        for (const set of this.handlers.values()) {
+          for (const fn of [...set]) this.safe(fn, null);
+        }
       }
     });
     this.es.addEventListener('error', () => this.scheduleReconnect());
     this.es.addEventListener('fact', (e: MessageEvent) => {
+      let fact: any;
       try {
-        const fact = JSON.parse(e.data);
-        if (fact?.type === 'listing') this.notify();
+        fact = JSON.parse(e.data);
       } catch {
-        /* heartbeats etc. */
+        return; // heartbeats etc.
       }
+      const set = fact?.type && this.handlers.get(fact.type);
+      if (!set) return;
+      for (const fn of [...set]) this.safe(fn, fact);
     });
   }
 
@@ -59,26 +88,24 @@ class ListingFeed {
   }
 
   private scheduleReconnect() {
-    if (this.retryTimer != null || this.listeners.size === 0) return;
+    if (this.retryTimer != null || this.total() === 0) return;
     this.es?.close();
     this.es = null;
     const delay = BACKOFF_MS[Math.min(this.retryCount, BACKOFF_MS.length - 1)];
     this.retryCount++;
     this.retryTimer = setTimeout(() => {
       this.retryTimer = null;
-      if (this.listeners.size > 0) this.open();
+      if (this.total() > 0) this.open();
     }, delay) as unknown as number;
   }
 
-  private notify() {
-    for (const fn of [...this.listeners]) {
-      try {
-        fn();
-      } catch {
-        /* a broken subscriber must not stall the rest */
-      }
+  private safe(fn: Handler, payload: any) {
+    try {
+      fn(payload);
+    } catch {
+      /* a broken subscriber must not stall the rest */
     }
   }
 }
 
-export const listingFeed = new ListingFeed();
+export const listingFeed = new AppFeed();
