@@ -218,64 +218,65 @@ visibility; push requires `writer`).
 
 ## Implementation status (this PR)
 
-This PR lands the **design above** and the **codec foundation**, and documents
-concrete findings from driving it end-to-end on a live fakeship. Honest status:
+**A stock `git clone` from an Urbit ship works.** `scripts/e2e-git-clone.sh`
+creates a repo, commits two files through `%code`'s actions, then runs
+**unmodified `git` (2.39.5)** against the ship and clones it — correct file
+contents, a real `git log`, `object-format sha256`. That's the headline: the
+ship *is* a git remote.
 
-**Implemented & compiling** (`desk/lib/git.hoon`, `desk/sur/code.hoon`,
-`desk/gen/gittest.hoon`):
+**Implemented & working:**
 
-- The full git **object model + data types** — `blob`/`tree`/`commit`/`tag`,
-  content-addressed by `hash`; repos with refs, collaborator rosters, issues,
-  and pull requests (`sur/code.hoon`).
-- A from-scratch **git codec** (`lib/git.hoon`), byte-for-byte to the spec in
-  `git-protocol.md`-style detail: object serialization (the `"<type> <size>\0"`
-  loose form), SHA-1 hashing via `shan`, tree serialization with the exact
-  mode/sort rules, commit building, **packfile v2 generation** (undeltified —
-  which stock git accepts), **zlib framing using DEFLATE stored blocks** (so we
-  need no compressor), Adler-32, and **pkt-line** framing. It compiles cleanly
-  as part of the desk and does not affect the running `%drive` agent.
-- `gittest.hoon` — a verification harness that hashes git's canonical vectors
-  (empty blob `e69de29b…`, empty tree `4b825dc6…`, `blob "hello\n" ce013625…`).
+- **The `%code` agent** (`desk/app/code.hoon`) — builds, boots, binds `/code`,
+  stores git objects, and serves the smart-HTTP transport. It runs alongside
+  `%drive` on the same desk.
+- **The git codec** (`desk/lib/git.hoon`) — object serialization (the
+  `"<type> <size>\0"` loose form), **SHA-256** object hashing, tree
+  serialization with git's exact mode/sort rules, commit building, **packfile
+  v2 generation** (undeltified — which stock git accepts), **zlib framing via
+  DEFLATE stored blocks** (no compressor needed), Adler-32, and **pkt-line**
+  framing. Verified against git's canonical object ids in-agent.
+- **Repo lifecycle** — `create-repo`, `commit-files` (build blob+tree+commit
+  objects and advance a branch), collaborator management; a repos scry.
+- **Smart-HTTP clone** — `GET …/info/refs?service=git-upload-pack` and
+  `POST …/git-upload-pack`, wired to the codec.
+- **Tests** — `e2e-single` adds `/code/ping`, the repos scry, and the git object
+  hashing self-test (55 pass / 0 fail); `e2e-git-clone.sh` is the full stock-git
+  clone proof.
 
-**Findings from live integration (the honest hard part).** Wiring the codec
-into a running agent surfaced real Urbit-runtime obstacles that any git-in-Hoon
-effort must solve, and which are the true remaining work here:
+**Three findings that any git-in-Hoon effort will hit (resolved here):**
 
-1. **Jetted crypto is unavailable in a gall `on-peek` (scry) context.** Calling
-   `shan`/`shax`/`shay` from a scry bails at runtime (it returns for the empty
-   input but not for real input). Consequence: git hashing must run in
-   **poke/HTTP-handler context**, never in a scry — the design accounts for this
-   (object creation happens in actions; pack generation in the `git-upload-pack`
-   HTTP handler), but it invalidates scry-based hashing.
-2. **Importing the codec into the large `%drive` agent broke its
-   instantiation** (compiles, but the agent no longer binds Eyre). The clean fix
-   is the dedicated `%code` agent this design already calls for (git hosting was
-   never meant to live in `%drive`); the remaining task is getting that agent to
-   start from `desk.bill` on this vere/kiln (its auto-start behavior differs from
-   the desk-named agent).
-3. **Eyre auth for git clients.** A `%connect` binding serves unauthenticated
-   requests to the agent (git clients don't do Urbit's cookie login), so
-   **public** clone works; private-repo auth needs the documented
-   `http.extraHeader`/token path.
-4. **SHA-1 byte-order into `shan`** wants a final in-context smoke test (the
-   codec feeds bytes most-significant-first, which both matches git and preserves
-   the trailing NUL in `"…\0"`; confirming against `e69de29b…` in a poke handler
-   is step 1 of the remaining work).
+1. **Jetted crypto is unavailable in a gall `on-peek` (scry).** `shan`/`shay`
+   bail there on real input, so all hashing runs in **poke/HTTP-handler
+   context** (object-creation actions; the upload-pack route) — never a scry.
+2. **SHA-256, not SHA-1.** Urbit's SHA-1 `shan` takes a bare atom and infers
+   length from `met`, which silently drops the trailing NUL in `"blob 0\0"` —
+   unusable. SHA-256 `shay` is **length-aware** (`shay [len dat]`), so it's
+   correct for every byte string. Git supports it natively via
+   `object-format=sha256`, which `%code` advertises. (`shay` returns a
+   little-endian digest; we reverse to git's big-endian id.)
+3. **A secondary agent needs three arms the desk-named agent got for free** —
+   `on-arvo` to ignore eyre's `%connect` ack, `on-watch` to accept eyre's
+   `/http-response` subscription (else HTTP 500), and correct startup from
+   `desk.bill`. All handled in `%code`.
 
-**Remaining path to a live `git clone`** (in priority order): stand up the
-`%code` agent (finding #2), confirm hashing in its poke/HTTP context (findings
-#1, #4), then wire `info/refs` + `git-upload-pack` to the already-implemented
-`make-pack`/`pkt` codec and prove a stock `git clone` against a fakeship. Push,
-issues, and pull requests then follow the same agent patterns Drive already uses
-for spaces/docs.
+**Auth:** `%code`'s `/code` binding is authenticated, so the clone passes the
+ship's session cookie via `git -c http.extraHeader=…` (fine for a company's own
+developers). Truly-public (no-auth) clone — matching how `%drive` serves its
+docket site — is the next ergonomic step.
+
+## What's designed but not yet built
+
+The collaboration layer — **issues, pull requests, code review, and cross-ship
+federation over Ames** — is specified above and typed in `sur/code.hoon`, with
+action stubs in `%code`, but not yet implemented. It follows the exact
+owner/mirror + SSE patterns `%drive` already uses for spaces and docs. Also
+pending: **`git push`** (receive-pack — needs a DEFLATE *inflater* and ref-delta
+resolution, per the design), subtree/nested-path commits (current
+`commit-files` writes a flat tree), and the browser Code UI.
 
 ## Non-goals (for now)
 
 - Git LFS, submodules, and shallow/partial clone negotiation beyond the basics.
-- A production choice of SHA-1 vs SHA-256 object format. Git defaults to SHA-1
-  (`shan`); SHA-256 repos (`shax`/`shay`, and `shay` is conveniently
-  length-aware) are a supported `--object-format=sha256` alternative if the
-  SHA-1 path proves awkward.
 - A full merge-conflict resolution UI (server does clean/fast-forward merges;
   conflicts are reported for the author to resolve locally and push).
 - CI/CD execution (out of scope; the repo is the substrate a CI ship could pull
