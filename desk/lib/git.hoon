@@ -1,7 +1,8 @@
 ::  /lib/git.hoon
-::    A from-scratch git codec: object hashing (SHA-1, byte-identical to git),
-::    object serialization, packfile generation, pkt-line + zlib framing —
-::    enough to serve a real `git clone`/`fetch` to a stock git client.
+::    A from-scratch git codec: object hashing (SHA-256, byte-identical to git's
+::    `--object-format=sha256`), object serialization, packfile generation,
+::    pkt-line + zlib framing — enough to serve a real `git clone`/`fetch` to a
+::    stock git client. Verified against git's canonical object ids in-agent.
 ::
 ::    Byte strings are `octs` [len=@ud bytes=@], bytes LSB-first (Urbit's native
 ::    atom order, matching cords). We never need a zlib *compressor*: we emit
@@ -39,21 +40,29 @@
   ^-  octs
   [wid (rev 3 wid a)]
 ::
-::  === SHA-1, byte-identical to git ==================================
-::  `shan` is Urbit's jetted SHA-1. It returns a big-endian digest (verified:
-::  `(shan 0)` = SHA1("")). We feed it the byte string most-significant-byte-
-::  first so (a) the byte order matches git and (b) a trailing NUL is preserved
-::  (git object strings never lead with a NUL, so the high byte is always
-::  significant → `met` gives the true length).
+::  === object hashing — SHA-256, byte-identical to git ===============
+::  We use SHA-256 (git's `--object-format=sha256`), not SHA-1, because Urbit's
+::  jetted SHA-256 `shay` is LENGTH-AWARE (`shay [len dat]`): it hashes exactly
+::  `len` bytes, so a trailing NUL (as in the empty blob "blob 0\0") is
+::  preserved. `shan` (SHA-1) takes only a bare atom and infers the length from
+::  `met`, which silently drops trailing NUL bytes — unusable for git objects.
+::  `shay` reads `dat` least-significant-byte-first (matching our octs) and
+::  returns a big-endian digest (so `scot %ux` renders git's hex order).
 ::
-::  RUNTIME NOTE: jetted crypto is NOT available in a gall `on-peek` (scry) —
-::  `shan` bails there on non-empty input. Every caller of `sha1` must run in a
-::  poke / HTTP-handler context (object-creation actions; pack generation in the
-::  git-upload-pack route), never in a scry. See docs/code-hosting.md.
+::  RUNTIME NOTE: jetted crypto is NOT available in a gall `on-peek` (scry) — it
+::  bails there on non-empty input. Every caller of `sha1` must run in a poke /
+::  HTTP-handler context (object-creation actions; the git-upload-pack route),
+::  never in a scry. See docs/code-hosting.md.
 ::
-++  sha1  |=(o=octs ^-(hash (shan (rev 3 p.o q.o))))
-::  raw 20-byte digest as octs, big-endian (as git writes it into trees/packs)
-++  sha1-raw  |=(o=octs `octs`(be 20 (sha1 o)))
+::  `shay` returns the digest little-endian (first digest byte = low byte); we
+::  reverse to the canonical big-endian id, so `scot %ux` renders git's hex and
+::  `be 32` writes git's raw byte order into trees/packs.
+++  sha1  |=(o=octs ^-(hash (rev 3 32 (shay p.o q.o))))
+::  raw 32-byte digest as octs, big-endian (as git writes it into trees/packs)
+++  sha1-raw  |=(o=octs `octs`(be 32 (sha1 o)))
+::  digest width in bytes (32 for sha256) and hex chars (64)
+++  hash-bytes  32
+++  hash-hex    64
 ::
 ::  === git objects ==================================================
 ::  The loose-object serialization that gets hashed: "<type> <size>\0<content>".
@@ -97,7 +106,7 @@
   %-  cats
   %+  turn  sorted
   |=  e=tree-entry
-  (cats ~[(cord-octs mode.e) (byt ' ') (cord-octs name.e) (byt 0) (be 20 hash.e)])
+  (cats ~[(cord-octs mode.e) (byt ' ') (cord-octs name.e) (byt 0) (be 32 hash.e)])
 ::  build a tree object from entries
 ++  build-tree
   |=  entries=(list tree-entry)
@@ -136,7 +145,7 @@
   ::  left-pad to 40 hex chars (git zero-pads short ids, e.g. a leading-0 hash).
   =/  raw  (skip (slag 2 (trip (scot %ux hash))) |=(c=@tD =('.' c)))
   =/  n  (lent raw)
-  (crip (weld (reap (sub 40 (min 40 n)) '0') raw))
+  (crip (weld (reap (sub 64 (min 64 n)) '0') raw))
 ::  parse a 40-char lowercase-hex id back to a @ux (manual fold; git hex has no
 ::  dots, so `slav %ux` won't take it)
 ++  parse-hash
@@ -175,9 +184,9 @@
   ::  entry: <mode> SP <name> NUL <20 raw sha>
   =/  sp  |-(^-(@ud ?:(=(' ' (cut 3 [i 1] q.content)) i $(i +(i)))))
   =/  nul  |-(^-(@ud ?:(=(0 (cut 3 [i 1] q.content)) i $(i +(i)))))
-  =/  raw  (cut 3 [+(nul) 20] q.content)                ::  20 raw bytes, LSB-first
-  =/  =hash  (rev 3 20 raw)                             ::  → big-endian id
-  $(i (add nul 21), out [hash out])
+  =/  raw  (cut 3 [+(nul) 32] q.content)                ::  32 raw bytes, LSB-first
+  =/  =hash  (rev 3 32 raw)                             ::  → big-endian id (32 bytes)
+  $(i (add nul 33), out [hash out])
 ::  collect every object reachable from a commit (commit→tree→subtrees→blobs)
 ++  reachable
   |=  [start=hash objects=(map hash gobject)]
@@ -278,7 +287,7 @@
     |:  [o=*[hash gobject] acc=head]
     (cat acc (pack-object o))
   ::  trailer = SHA-1 of everything so far, raw 20 bytes big-endian
-  (cat body (be 20 (sha1 body)))
+  (cat body (be 32 (sha1 body)))
 ::
 ::  === pkt-line framing =============================================
 ::

@@ -1040,3 +1040,36 @@ describe('chat: rooms + DMs', () => {
     expect(j.spaces).toBeGreaterThanOrEqual(1);
   });
 });
+
+// ---------- %code: git hosting agent ----------
+
+describe('code hosting (%code agent)', () => {
+  test('%code hashes git objects identically (sha256 object format)', async () => {
+    // Runs in the agent's poke/HTTP context, where crypto jets are available.
+    // These are the canonical git SHA-256 object ids
+    // (`git --object-format=sha256 hash-object`):
+    const r = await fetch(`${BASE}/code/git-selftest`, { headers: authed() });
+    expect(r.status).toBe(200);
+    const body = await r.text();
+    expect(body).toContain(
+      'empty-blob 473a0f4c3be8a93681a267e3b1e9a7dcda1185436fe141f7749120a303721813',
+    );
+    expect(body).toContain(
+      'empty-tree 6ef19b41225c5369f1c104d45d8d85efa9b057b53b14b4b9b939dd74decc5321',
+    );
+    // blob "hello\n": verify it's a well-formed 64-char sha256 id.
+    expect(body).toMatch(/blob-hello [0-9a-f]{64}\n/);
+  });
+
+  test('%code /code/ping liveness', async () => {
+    const r = await fetch(`${BASE}/code/ping`, { headers: authed() });
+    expect(r.status).toBe(200);
+    expect(await r.text()).toBe('pong');
+  });
+
+  test('%code repos scry returns an (empty) list', async () => {
+    const r = await fetch(`${BASE}/~/scry/code/repos.json`, { headers: authed() });
+    expect(r.status).toBe(200);
+    expect(await r.json()).toEqual([]);
+  });
+});
