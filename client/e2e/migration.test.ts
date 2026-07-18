@@ -15,7 +15,7 @@ if (!BASE || !COOKIE) {
 const EXPECTED_STATE_VERSION = Number(process.env.EXPECTED_STATE_VERSION ?? '8');
 
 async function scry(path: string): Promise<any> {
-  const r = await fetch(`${BASE}/~/scry/documents/${path}.json`, {
+  const r = await fetch(`${BASE}/~/scry/drive/${path}.json`, {
     headers: { cookie: COOKIE },
   });
   if (!r.ok) throw new Error(`scry ${path} → ${r.status}`);

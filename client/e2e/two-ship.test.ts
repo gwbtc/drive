@@ -28,7 +28,7 @@ async function action(s: Ship, body: unknown): Promise<void> {
 }
 
 async function scry(s: Ship, path: string): Promise<any> {
-  const r = await fetch(`${s.base}/~/scry/documents/${path}.json`, {
+  const r = await fetch(`${s.base}/~/scry/drive/${path}.json`, {
     headers: { cookie: s.cookie },
   });
   if (!r.ok) throw new Error(`scry ${path} → ${r.status}`);

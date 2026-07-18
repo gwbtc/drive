@@ -2,7 +2,7 @@ VERE := /Users/trent/vere-v4.2-macos-aarch64
 PIER ?= zod
 SHIP_NAME ?= zod
 HTTP_PORT ?= 8090
-DESK_NAME := documents
+DESK_NAME := drive
 
 .PHONY: help install build watch boot dojo-help check test e2e golden
 
@@ -10,7 +10,7 @@ help:
 	@echo "Groundwire Drive — dev workflow"
 	@echo ""
 	@echo "  make install     install JS deps"
-	@echo "  make build       build the JS+CSS bundles into desk/app/documents/"
+	@echo "  make build       build the JS+CSS bundles into desk/app/drive/"
 	@echo "  make watch       rebuild on JS file changes"
 	@echo "  make check       typecheck + unit tests (fast, no ship)"
 	@echo "  make e2e         single-ship API e2e (boots a cloned golden pier)"

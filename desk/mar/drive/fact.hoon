@@ -1,7 +1,7 @@
-::  /mar/documents/fact.hoon
+::  /mar/drive/fact.hoon
 ::    Facts published on /doc/<id> subscriptions. Casts to JSON for browser delivery.
 ::
-/-  *documents
+/-  *drive
 |_  fac=fact
 ++  grow
   |%

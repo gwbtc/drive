@@ -1,7 +1,7 @@
-::  /mar/documents/awareness-poke.hoon
+::  /mar/drive/awareness-poke.hoon
 ::    Inter-ship awareness (cursor/selection) poke.
 ::
-/-  *documents
+/-  *drive
 |_  a=awareness-poke
 ++  grow
   |%

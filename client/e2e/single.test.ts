@@ -1,5 +1,5 @@
 // Single-ship API-level e2e suite. Requires a live fakeship with the
-// %documents desk installed; run via scripts/e2e-single.sh, which supplies:
+// %drive desk installed; run via scripts/e2e-single.sh, which supplies:
 //   SHIP_URL  http://localhost:<port>
 //   SHIP_NAME zod
 //   COOKIE    urbauth-~zod=<...>   (ship-auth cookie header value)
@@ -43,7 +43,7 @@ async function actionOk(body: unknown): Promise<void> {
 }
 
 async function scry(path: string): Promise<any> {
-  const r = await fetch(`${BASE}/~/scry/documents/${path}.json`, { headers: authed() });
+  const r = await fetch(`${BASE}/~/scry/drive/${path}.json`, { headers: authed() });
   if (!r.ok) throw new Error(`scry ${path} → ${r.status}`);
   return r.json();
 }
@@ -244,7 +244,7 @@ describe('share-link tokens', () => {
     const r = await fetch(`${BASE}/drive/t?k=${token}`, { redirect: 'manual' });
     expect(r.status).toBe(302);
     const setCookie = r.headers.get('set-cookie') ?? '';
-    const m = setCookie.match(/documents-session=[^;]+/);
+    const m = setCookie.match(/drive-session=[^;]+/);
     expect(m).not.toBeNull();
     return { token, session: m![0] };
   }
@@ -509,7 +509,7 @@ describe('token /state does not leak the owner ACL', () => {
     const token = tokens[tokens.length - 1].token as string;
     const entry = await fetch(`${BASE}/drive/t?k=${token}`, { redirect: 'manual' });
     const session = (entry.headers.get('set-cookie') ?? '').match(
-      /documents-session=[^;]+/,
+      /drive-session=[^;]+/,
     )![0];
 
     const state = await docState(id, session);
@@ -652,7 +652,7 @@ describe('trash cascade', () => {
     const tok = ((await scry(`tokens/for/${img}`)).tokens as any[])[0].token;
     const entry = await fetch(`${BASE}/drive/t?k=${tok}`, { redirect: 'manual' });
     const session = (entry.headers.get('set-cookie') ?? '').match(
-      /documents-session=[^;]+/,
+      /drive-session=[^;]+/,
     )![0];
 
     await actionOk({ delete: folder });
@@ -688,7 +688,7 @@ describe('precise token revocation', () => {
       const token = after.find((t) => !before.has(t.token)).token as string;
       const r = await fetch(`${BASE}/drive/t?k=${token}`, { redirect: 'manual' });
       const session = (r.headers.get('set-cookie') ?? '').match(
-        /documents-session=[^;]+/,
+        /drive-session=[^;]+/,
       )![0];
       return { token, session };
     };
@@ -878,7 +878,7 @@ describe('uploads & blobs', () => {
     const token = tokens[tokens.length - 1].token as string;
     const entry = await fetch(`${BASE}/drive/t?k=${token}`, { redirect: 'manual' });
     const session = (entry.headers.get('set-cookie') ?? '').match(
-      /documents-session=[^;]+/,
+      /drive-session=[^;]+/,
     )![0];
 
     // Inline child image: allowed.

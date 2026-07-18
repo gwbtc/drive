@@ -2,7 +2,7 @@
 
 A collaborative productivity suite for a whole company — shared docs, sheets,
 and notes with real-time editing, self-hosted on Urbit. Conflict-free and
-source-available. Internal desk/agent codename: `%documents`.
+source-available. Internal desk/agent codename: `%drive`.
 
 - **Documents** — Tiptap rich text with B/I/U/S, font family + size + color,
   highlight, headings, lists, task lists, indent/outdent, alignment, tables,
@@ -39,7 +39,7 @@ source-available. Internal desk/agent codename: `%documents`.
 
 ## Shared spaces (company collaboration)
 
-Groundwire's headline idea: content can belong to a **space** — a named,
+Drive's headline idea: content can belong to a **space** — a named,
 org-owned container — instead of a single person. That is what makes it a
 *company* drive rather than a personal one.
 
@@ -65,17 +65,17 @@ org-owned container — instead of a single person. That is what makes it a
 - **Directory** — every member can see the roster (who's on the team and their
   role), on both hosted and joined spaces.
 
-### Running Groundwire for a company
+### Running Drive for a company
 
 Because a space is hosted on one ship, that ship is your company's Drive:
 
 1. **Pick a host ship** to hold the company's shared spaces — ideally an
    always-on ship (a hosted planet, or a moon under the company's star), since
    the space is reachable only while its host ship is online.
-2. On the host, install Groundwire (see *Install* below) and create a space
+2. On the host, install Drive (see *Install* below) and create a space
    per team/department (Files → the **Spaces** switcher → **New space**).
 3. **Invite members** by `@p` from the space's *Members* dialog. Each member
-   installs Groundwire on their own ship, accepts the invite from their inbox,
+   installs Drive on their own ship, accepts the invite from their inbox,
    and the space appears in their sidebar. They edit from their own ship; the
    host holds the authoritative copy.
 4. **Availability** mirrors the host ship's uptime — there is no third-party

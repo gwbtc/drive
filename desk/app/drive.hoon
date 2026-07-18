@@ -1,16 +1,16 @@
-::  /app/documents.hoon
-::    Documents — collaborative editor on Urbit (codename %documents).
+::  /app/drive.hoon
+::    Drive — collaborative editor on Urbit (codename %drive).
 ::
 ::    Files live on the owner ship. Other ships subscribe and forward
 ::    Yjs binary updates back to the owner; the owner appends and fans
 ::    out to all subscribers. Per-ship ACL plus link-token sharing.
 ::
-/-  *documents
+/-  *drive
 /+  default-agent, dbug, server, schooner, schooner-stream
-/*  documents-ui   %html  /app/documents/ui/html
-/*  documents-js   %js    /app/documents/js/js
-/*  documents-css  %css   /app/documents/css/css
-/*  documents-sw   %js    /app/documents/sw/js
+/*  drive-ui   %html  /app/drive/ui/html
+/*  drive-js   %js    /app/drive/js/js
+/*  drive-css  %css   /app/drive/css/css
+/*  drive-sw   %js    /app/drive/sw/js
 ::
 |%
 +$  card  card:agent:gall
@@ -306,11 +306,11 @@
 ++  on-load
   |=  old=vase
   ^-  (quip card _this)
-  ::  Re-bind eyre to /drive (in case we were previously bound to /apps/documents,
+  ::  Re-bind eyre to /drive (in case we were previously bound to /apps/drive,
   ::  or to ensure fresh installs are also bound). %disconnect is idempotent.
   =/  rebind=(list card)
-    :~  [%pass /eyre/disconnect %arvo %e %disconnect [~ /apps/documents]]
-        [%pass /eyre/connect %arvo %e %connect [~ /drive] %documents]
+    :~  [%pass /eyre/disconnect %arvo %e %disconnect [~ /apps/drive]]
+        [%pass /eyre/connect %arvo %e %connect [~ /drive] %drive]
         ::  Ensure the session-sweep alarm is running on existing piers.
         ::  Multiple parallel sweepers across many |commits are harmless;
         ::  each just walks the (small) sessions map.
@@ -528,7 +528,7 @@
         blobs.s9  children.s9  pending-sse.s9  invites.s9  starred.s9
         *(map doc-id octs)
     ==
-  ::  v10 → v11: add empty spaces + doc→space maps (Groundwire spaces).
+  ::  v10 → v11: add empty spaces + doc→space maps (spaces).
   =/  up-to-11
     |=  s10=state-10
     ^-  state-11
@@ -723,7 +723,7 @@
 ++  init
   ^-  (quip card _state)
   :_  state
-  :~  [%pass /eyre/connect %arvo %e %connect [~ /drive] %documents]
+  :~  [%pass /eyre/connect %arvo %e %connect [~ /drive] %drive]
       [%pass /keepalive %arvo %b %wait (add now.bowl ~s25)]
       [%pass /session-sweep %arvo %b %wait (add now.bowl ~m5)]
       [%pass /trash-sweep %arvo %b %wait (add now.bowl ~h1)]
@@ -737,36 +737,36 @@
     =+  !<([eyre-id=@ta =inbound-request:eyre] vase)
     (handle-http eyre-id inbound-request)
     ::
-      %documents-action
+      %drive-action
     ?>  =(src.bowl our.bowl)
     =+  !<(=action vase)
     (handle-action-feed action)
     ::
-      %documents-update-poke
+      %drive-update-poke
     =+  !<(=update-poke vase)
     (recv-remote-update src.bowl update-poke)
     ::
-      %documents-awareness-poke
+      %drive-awareness-poke
     =+  !<(=awareness-poke vase)
     (recv-remote-awareness src.bowl awareness-poke)
     ::
-      %documents-comment-poke
+      %drive-comment-poke
     =+  !<(=comment-poke vase)
     (recv-remote-comment src.bowl comment-poke)
     ::
-      %documents-share-notice
+      %drive-share-notice
     =+  !<(n=share-notice vase)
     (recv-share-notice src.bowl n)
     ::
-      %documents-share-retract
+      %drive-share-retract
     =+  !<(r=share-retract vase)
     (recv-share-retract src.bowl r)
     ::
-      %documents-space-invite-notice
+      %drive-space-invite-notice
     =+  !<(n=space-invite-notice vase)
     (recv-space-invite-notice src.bowl n)
     ::
-      %documents-space-invite-decline
+      %drive-space-invite-decline
     =+  !<(d=space-invite-decline vase)
     (recv-space-invite-decline src.bowl d)
   ==
@@ -824,12 +824,12 @@
         =/  m  (~(get by mirrors) did)
         ?~  m  `state
         :_  state
-        :~  [%pass /mirror/(scot %uv did) %agent [owner.u.m %documents] %watch /doc/(scot %uv did)]
+        :~  [%pass /mirror/(scot %uv did) %agent [owner.u.m %drive] %watch /doc/(scot %uv did)]
         ==
       `state(mirrors (~(del by mirrors) did))
         %fact
       ?+  p.cage.sign  `state
-          %documents-fact
+          %drive-fact
         =+  !<(=fact q.cage.sign)
         (handle-mirror-fact did fact)
       ==
@@ -891,7 +891,7 @@
       [feed state(space-mirrors (~(del by space-mirrors) sid))]
         %fact
       ?+  p.cage.sign  `state
-          %documents-fact
+          %drive-fact
         =+  !<(=fact q.cage.sign)
         (handle-space-mirror-fact sid fact)
       ==
@@ -1411,7 +1411,7 @@
   ^-  (quip card _state)
   =/  pax=path  /doc/(scot %uv did)
   =/  fact-card=card
-    [%give %fact ~[pax] %documents-fact !>(fact)]
+    [%give %fact ~[pax] %drive-fact !>(fact)]
   =/  payload=@t  (json-to-string (fact-to-json fact))
   =/  new-events=(list pending-sse-event)
     %+  turn  (sse-clients-for did)
@@ -1480,7 +1480,7 @@
   ==
 ::
 ::  handle-action plus the listing ping when warranted — the entry point
-::  for both the %documents-action poke and POST /drive/action.
+::  for both the %drive-action poke and POST /drive/action.
 ++  handle-action-feed
   |=  =action
   ^-  (quip card _state)
@@ -1834,8 +1834,8 @@
     =/  notice-cards=(list card)
       ?:  =(who.action our.bowl)  ~
       :~  :*  %pass  /share-notice/(scot %uv doc-id.action)
-              %agent  [who.action %documents]
-              %poke  %documents-share-notice
+              %agent  [who.action %drive]
+              %poke  %drive-share-notice
               !>(`share-notice`[doc-id.action title.u.doc doc-type.u.doc role.action])
           ==
       ==
@@ -1856,8 +1856,8 @@
     =/  retract-cards=(list card)
       ?:  =(who.action our.bowl)  ~
       :~  :*  %pass  /share-retract/(scot %uv doc-id.action)
-              %agent  [who.action %documents]
-              %poke  %documents-share-retract
+              %agent  [who.action %drive]
+              %poke  %drive-share-retract
               !>(`share-retract`[doc-id.action])
           ==
       ==
@@ -1902,7 +1902,7 @@
       ==
     :_  state(mirrors (~(put by mirrors) doc-id.action mirror))
     :~  :*  %pass  /mirror/(scot %uv doc-id.action)
-            %agent  [owner.action %documents]
+            %agent  [owner.action %drive]
             %watch  /doc/(scot %uv doc-id.action)
         ==
     ==
@@ -1912,7 +1912,7 @@
     ?~  m  `state
     :_  state(mirrors (~(del by mirrors) doc-id.action))
     :~  :*  %pass  /mirror/(scot %uv doc-id.action)
-            %agent  [owner.u.m %documents]
+            %agent  [owner.u.m %drive]
             %leave  ~
         ==
     ==
@@ -1951,8 +1951,8 @@
     :_  state
     :~  :*  %pass
             /forward-awareness/(scot %uv doc-id.action)
-            %agent  [owner.u.m %documents]
-            %poke   %documents-awareness-poke
+            %agent  [owner.u.m %drive]
+            %poke   %drive-awareness-poke
             !>([doc-id.action our.bowl blob.action])
         ==
     ==
@@ -1999,7 +1999,7 @@
       (fanout-fact doc-id.action %comment-deleted comment-id.action)
     (forward-comment doc-id.action comment-id.action %delete ~)
     ::
-    ::  ===  Groundwire shared spaces  ===================================
+    ::  ===  Shared spaces  ===================================
     ::
       %create-space
     =/  sid=space-id  fresh-space-id
@@ -2125,7 +2125,7 @@
     =/  sm=space-mirror  [host.action '' %viewer ~ ~]
     :_  state(space-mirrors (~(put by space-mirrors) sid sm))
     :~  :*  %pass  /space-mirror/(scot %uv sid)
-            %agent  [host.action %documents]
+            %agent  [host.action %drive]
             %watch  /space/(scot %uv sid)
         ==
     ==
@@ -2135,14 +2135,14 @@
     ?~  sm  `state
     :_  state(space-mirrors (~(del by space-mirrors) space-id.action))
     :~  :*  %pass  /space-mirror/(scot %uv space-id.action)
-            %agent  [host.u.sm %documents]
+            %agent  [host.u.sm %drive]
             %leave  ~
         ==
         ::  Relinquish membership on the host too — otherwise we stay in its
         ::  roster and keep doc access. The host un-rosters `src` and revokes.
         :*  %pass  /space-decline/(scot %uv space-id.action)
-            %agent  [host.u.sm %documents]
-            %poke  %documents-space-invite-decline
+            %agent  [host.u.sm %drive]
+            %poke  %drive-space-invite-decline
             !>(`space-invite-decline`[space-id.action])
         ==
     ==
@@ -2158,8 +2158,8 @@
     =.  state  state(spaces (~(put by spaces) space-id.action spc2))
     :_  state
     :~  :*  %pass  /space-invite/(scot %uv space-id.action)
-            %agent  [who.action %documents]
-            %poke  %documents-space-invite-notice
+            %agent  [who.action %drive]
+            %poke  %drive-space-invite-notice
             !>(`space-invite-notice`[space-id.action name.u.spc space-role.action])
         ==
         (give-space-fact space-id.action %space-roster members.spc2)
@@ -2173,7 +2173,7 @@
     =/  sm=space-mirror  [host.u.inv name.u.inv space-role.u.inv ~ ~]
     :_  state(space-mirrors (~(put by space-mirrors) space-id.action sm))
     :~  :*  %pass  /space-mirror/(scot %uv space-id.action)
-            %agent  [host.u.inv %documents]
+            %agent  [host.u.inv %drive]
             %watch  /space/(scot %uv space-id.action)
         ==
     ==
@@ -2185,8 +2185,8 @@
     =.  state  state(space-invites (~(del by space-invites) space-id.action))
     :_  state
     :~  :*  %pass  /space-decline/(scot %uv space-id.action)
-            %agent  [host.u.inv %documents]
-            %poke  %documents-space-invite-decline
+            %agent  [host.u.inv %drive]
+            %poke  %drive-space-invite-decline
             !>(`space-invite-decline`[space-id.action])
         ==
     ==
@@ -2200,8 +2200,8 @@
   ?~  m  `state
   :_  state
   :~  :*  %pass  /comment/(scot %uv did)/(scot %uv cid)
-          %agent  [owner.u.m %documents]
-          %poke  %documents-comment-poke
+          %agent  [owner.u.m %drive]
+          %poke  %drive-comment-poke
           !>(`comment-poke`[did cid act])
       ==
   ==
@@ -2314,8 +2314,8 @@
   |=  [did=doc-id owner=@p seq=@ud u=octs]
   ^-  card
   :*  %pass  /forward/(scot %uv did)/(scot %ud seq)
-      %agent  [owner %documents]
-      %poke  %documents-update-poke  !>(`update-poke`[did u])
+      %agent  [owner %drive]
+      %poke  %drive-update-poke  !>(`update-poke`[did u])
   ==
 ::
 ++  recv-remote-awareness
@@ -2351,30 +2351,30 @@
       %+  turn  (flop updates.u.doc)
       |=  su=stamped-update
       ^-  card
-      [%give %fact ~ %documents-fact !>(`fact`[%update data.su])]
+      [%give %fact ~ %drive-fact !>(`fact`[%update data.su])]
     ::  Replay existing comments so a fresh mirror gets history.
     =/  comment-cards=(list card)
       %+  turn  ~(tap by comments.u.doc)
       |=  [cid=@uv c=comment]
       ^-  card
-      [%give %fact ~ %documents-fact !>(`fact`[%comment-add cid c])]
+      [%give %fact ~ %drive-fact !>(`fact`[%comment-add cid c])]
     ::  File/image bytes ride the initial burst only — never the SSE path.
     =/  blob-cards=(list card)
       =/  b  (~(get by blobs) did)
       ?~  b  ~
       =/  data=octs  [size.u.b bytes.u.b]
-      ~[[%give %fact ~ %documents-fact !>(`fact`[%blob mime.u.b data])]]
+      ~[[%give %fact ~ %drive-fact !>(`fact`[%blob mime.u.b data])]]
     ::  A subscriber arriving at a doc with a deep update backlog is asked
     ::  to compact it — this is the recovery path for docs whose backlog
     ::  crossed the threshold while no client was connected.
     =/  compaction-cards=(list card)
       ?.  (doc-needs-compaction u.doc)  ~
-      ~[[%give %fact ~ %documents-fact !>(`fact`[%request-snapshot ~])]]
+      ~[[%give %fact ~ %drive-fact !>(`fact`[%request-snapshot ~])]]
     =/  cards=(list card)
       ;:  weld
-        ~[[%give %fact ~ %documents-fact !>(meta-fact)]]
-        ~[[%give %fact ~ %documents-fact !>(role-fact)]]
-        ~[[%give %fact ~ %documents-fact !>(snap-fact)]]
+        ~[[%give %fact ~ %drive-fact !>(meta-fact)]]
+        ~[[%give %fact ~ %drive-fact !>(role-fact)]]
+        ~[[%give %fact ~ %drive-fact !>(snap-fact)]]
         update-cards
         comment-cards
         blob-cards
@@ -2391,11 +2391,11 @@
     %+  turn  (flop tail.u.mr)
     |=  u=octs
     ^-  card
-    [%give %fact ~ %documents-fact !>(`fact`[%update u])]
+    [%give %fact ~ %drive-fact !>(`fact`[%update u])]
   :_  state
   ;:  weld
-    ~[[%give %fact ~ %documents-fact !>(meta-fact)]]
-    ~[[%give %fact ~ %documents-fact !>(snap-fact)]]
+    ~[[%give %fact ~ %drive-fact !>(meta-fact)]]
+    ~[[%give %fact ~ %drive-fact !>(snap-fact)]]
     tail-cards
   ==
 ::
@@ -2411,14 +2411,14 @@
     ?~  m  `state
     :_  state(mirrors (~(del by mirrors) did))
     :~  :*  %pass  /mirror/(scot %uv did)
-            %agent  [owner.u.m %documents]
+            %agent  [owner.u.m %drive]
             %leave  ~
         ==
     ==
   `state
 ::
 ::  =================================================================
-::  Groundwire space channel — host side
+::  Space channel — host side
 ::  =================================================================
 ::
 ::  the live docs currently assigned to a space, as space-doc summaries.
@@ -2438,7 +2438,7 @@
 ++  give-space-fact
   |=  [sid=space-id =fact]
   ^-  card
-  [%give %fact ~[/space/(scot %uv sid)] %documents-fact !>(fact)]
+  [%give %fact ~[/space/(scot %uv sid)] %drive-fact !>(fact)]
 ::  If a doc belongs to a space, tell that space's members its metadata
 ::  changed (title/type/modified) so their doc list stays fresh. ~ otherwise.
 ++  space-doc-refresh
@@ -2485,10 +2485,10 @@
     %+  turn  (docs-in-space sid)
     |=  [did=doc-id sd=space-doc]
     ^-  card
-    [%give %fact ~ %documents-fact !>(`fact`[%space-doc did sd])]
+    [%give %fact ~ %drive-fact !>(`fact`[%space-doc did sd])]
   :_  state
-  :*  [%give %fact ~ %documents-fact !>(meta-fact)]
-      [%give %fact ~ %documents-fact !>(roster-fact)]
+  :*  [%give %fact ~ %drive-fact !>(meta-fact)]
+      [%give %fact ~ %drive-fact !>(roster-fact)]
       doc-cards
   ==
 ::
@@ -2619,29 +2619,29 @@
   ::
   ?:  ?=([%app ~] rest)
     ?:  =(`%js ext)
-      [(send [200 ~ [%text-javascript documents-js]]) state]
+      [(send [200 ~ [%text-javascript drive-js]]) state]
     ?:  =(`%css ext)
-      [(send [200 ~ [%text-css documents-css]]) state]
+      [(send [200 ~ [%text-css drive-css]]) state]
     [(send [404 ~ [%plain "not found"]]) state]
   ::
   ::  SPA / token entry
   ::
   ?:  ?=(~ rest)
-    [(send [200 ~ [%html documents-ui]]) state]
+    [(send [200 ~ [%html drive-ui]]) state]
   ?:  ?=([%d *] rest)
-    [(send [200 ~ [%html documents-ui]]) state]
+    [(send [200 ~ [%html drive-ui]]) state]
   ?:  ?=([%files *] rest)
-    [(send [200 ~ [%html documents-ui]]) state]
+    [(send [200 ~ [%html drive-ui]]) state]
   ?:  ?=([%notes *] rest)
-    [(send [200 ~ [%html documents-ui]]) state]
+    [(send [200 ~ [%html drive-ui]]) state]
   ?:  ?=([%photos *] rest)
-    [(send [200 ~ [%html documents-ui]]) state]
+    [(send [200 ~ [%html drive-ui]]) state]
   ?:  ?=([%trash *] rest)
-    [(send [200 ~ [%html documents-ui]]) state]
+    [(send [200 ~ [%html drive-ui]]) state]
   ?:  ?=([%starred *] rest)
-    [(send [200 ~ [%html documents-ui]]) state]
+    [(send [200 ~ [%html drive-ui]]) state]
   ?:  ?=([%recent *] rest)
-    [(send [200 ~ [%html documents-ui]]) state]
+    [(send [200 ~ [%html drive-ui]]) state]
   ?:  ?=([%t ~] rest)
     ::  Token URLs use a query param: /drive/t?k=<token>
     =/  pams=(map @t @t)  (malt args)
@@ -2659,7 +2659,7 @@
       [doc-id.u.grant role.u.grant (add now.bowl ~d7) tok]
     =/  cookie=@t
       %+  rap  3
-      :~  'documents-session='  (scot %uv sid)
+      :~  'drive-session='  (scot %uv sid)
           '; Path=/drive; SameSite=Lax; Max-Age=604800'
       ==
     =/  redirect-url=@t
@@ -2703,7 +2703,7 @@
       &(=(doc-id.u.sess did) (gth expires.u.sess now.bowl))
     ?.  authed
       [(send [401 ~ [%plain "auth required"]]) state]
-    ::  Initial state is delivered via scry GET /~/scry/documents/doc/<id>/state.json
+    ::  Initial state is delivered via scry GET /~/scry/drive/doc/<id>/state.json
     ::  on the client side; here we only register the SSE stream for live deltas.
     =/  sub=sse-sub  [did ?~(sid 0v0 u.sid)]
     ::  If this doc's backlog is compaction-worthy, ask the newly-connected
@@ -3070,7 +3070,7 @@
     %+  give-simple-payload:app:server  eyre-id
     ^-  simple-payload:http
     ::  Service-Worker-Allowed lets a /drive-scoped worker control /drive/*.
-    [[200 :~('content-type'^'text/javascript' 'service-worker-allowed'^'/drive/')] `(as-octs:mimes:html documents-sw)]
+    [[200 :~('content-type'^'text/javascript' 'service-worker-allowed'^'/drive/')] `(as-octs:mimes:html drive-sw)]
   ::
   [(send [404 ~ [%plain "not found"]]) state]
 ::
@@ -3084,7 +3084,7 @@
   =/  cookie  (~(get by hdrs) 'cookie')
   ?~  cookie  ~
   =/  s=tape  (trip u.cookie)
-  =/  needle=tape  "documents-session="
+  =/  needle=tape  "drive-session="
   =/  pos  (find needle s)
   ?~  pos  ~
   =/  rest=tape  (slag (add u.pos (lent needle)) s)
@@ -3221,7 +3221,7 @@
 ++  pwa-manifest
   ^-  @t
   '''
-  {"name":"Groundwire Drive","short_name":"Groundwire","start_url":"/drive","scope":"/drive/","display":"standalone","background_color":"#ffffff","theme_color":"#1a73e8"}
+  {"name":"Groundwire Drive","short_name":"Drive","start_url":"/drive","scope":"/drive/","display":"standalone","background_color":"#ffffff","theme_color":"#1a73e8"}
   '''
 ::
 ++  not-found-html

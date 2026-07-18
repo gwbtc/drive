@@ -6,11 +6,11 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "bun test src",
-    "build:js": "bun build src/index.tsx --outfile=../desk/app/documents/js.js --minify --target=browser --format=iife",
-    "build:css": "bun build src/styles/app.css --outfile=../desk/app/documents/css.css",
-    "build:sw": "bun build src/sw.ts --outfile=../desk/app/documents/sw.js --target=browser --format=iife",
+    "build:js": "bun build src/index.tsx --outfile=../desk/app/drive/js.js --minify --target=browser --format=iife",
+    "build:css": "bun build src/styles/app.css --outfile=../desk/app/drive/css.css",
+    "build:sw": "bun build src/sw.ts --outfile=../desk/app/drive/sw.js --target=browser --format=iife",
     "build": "bun run typecheck && bun run build:js && bun run build:css && bun run build:sw",
-    "watch": "bun build src/index.tsx --outfile=../desk/app/documents/js.js --target=browser --format=iife --watch"
+    "watch": "bun build src/index.tsx --outfile=../desk/app/drive/js.js --target=browser --format=iife --watch"
   },
   "dependencies": {
     "@preact/signals": "^2.0.0",

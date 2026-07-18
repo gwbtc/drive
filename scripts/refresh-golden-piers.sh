@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build (or rebuild) the cached "golden" fakeship piers used by the e2e
-# harness. A golden pier is a fully-booted fakeship with %documents
+# harness. A golden pier is a fully-booted fakeship with %drive
 # installed, shut down cleanly. Test runs clone it (APFS copy-on-write)
 # instead of paying the ~2-minute fresh-boot cost.
 #

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bootstrap a fakeship and prepare it for installing the %documents desk.
+# Bootstrap a fakeship and prepare it for installing the %drive desk.
 #
 # Usage:
 #   scripts/setup-fakeship.sh [ship_name] [http_port] [ames_port]
@@ -8,13 +8,13 @@
 #
 # This script ONLY prepares the pier. To actually install the desk you
 # need to be in the fakeship's dojo to run:
-#   |new-desk %documents
-#   |mount %documents
+#   |new-desk %drive
+#   |mount %drive
 # then back in this shell:
-#   cp -R desk/* <ship>/documents/
+#   cp -R desk/* <ship>/drive/
 # then in dojo:
-#   |commit %documents
-#   |install our %documents
+#   |commit %drive
+#   |install our %drive
 
 set -euo pipefail
 
@@ -36,15 +36,15 @@ echo "  Ames:  $AMES_PORT (local-only)"
 echo ""
 echo "When the dojo prompt appears (~$SHIP:dojo>), run:"
 echo ""
-echo "  |new-desk %documents"
-echo "  |mount %documents"
+echo "  |new-desk %drive"
+echo "  |mount %drive"
 echo ""
 echo "Then in a separate terminal:"
-echo "  cp -R $(pwd)/desk/* $(pwd)/$SHIP/documents/"
+echo "  cp -R $(pwd)/desk/* $(pwd)/$SHIP/drive/"
 echo ""
 echo "Back in dojo:"
-echo "  |commit %documents"
-echo "  |install our %documents"
+echo "  |commit %drive"
+echo "  |install our %drive"
 echo ""
 echo "Then visit http://localhost:$HTTP_PORT/drive"
 echo ""

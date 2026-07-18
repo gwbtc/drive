@@ -13,7 +13,7 @@ LIB_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ROOT="${ROOT:-$LIB_ROOT}"
 PIERS_DIR="${PIERS_DIR:-$ROOT/.piers}"
 VERE="${VERE:-$(command -v vere || echo /Users/trent/vere-v4.2-macos-aarch64)}"
-DESK_NAME="documents"
+DESK_NAME="drive"
 
 require_vere() {
   if [ ! -x "$VERE" ]; then

@@ -1,7 +1,7 @@
-::  /mar/documents/update-poke.hoon
+::  /mar/drive/update-poke.hoon
 ::    Inter-ship Yjs update poke: the editing ship → the owning ship.
 ::
-/-  *documents
+/-  *drive
 |_  u=update-poke
 ++  grow
   |%

@@ -1,5 +1,5 @@
-::  /sur/documents.hoon
-::    Types for the Documents app (codename %documents, marketed Groundwire Drive).
+::  /sur/drive.hoon
+::    Types for the Drive app (codename %drive).
 ::
 |%
 +$  doc-id     @uv
@@ -204,7 +204,7 @@
       [%bulk-restore docs=(list doc-id)]
       [%bulk-purge docs=(list doc-id)]
       [%bulk-move docs=(list doc-id) new-parent=(unit doc-id)]
-      ::  shared spaces (Groundwire company collaboration)
+      ::  shared spaces (company collaboration)
       [%create-space name=@t]
       [%rename-space =space-id name=@t]
       [%delete-space =space-id]

@@ -2804,7 +2804,7 @@ input.sheet-cell { display: block; padding: 6px 12px; }
   .shortcuts-fab { display: none !important; }
 }
 
-/* === Groundwire spaces (shared company drives) ============================ */
+/* === Spaces (shared company drives) ============================ */
 
 .rail-spaces {
   display: flex;

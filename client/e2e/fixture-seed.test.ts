@@ -20,7 +20,7 @@ async function actionOk(body: unknown): Promise<void> {
 }
 
 async function scry(path: string): Promise<any> {
-  const r = await fetch(`${BASE}/~/scry/documents/${path}.json`, {
+  const r = await fetch(`${BASE}/~/scry/drive/${path}.json`, {
     headers: { cookie: COOKIE },
   });
   if (!r.ok) throw new Error(`scry ${path} → ${r.status}`);

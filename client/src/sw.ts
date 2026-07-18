@@ -1,7 +1,7 @@
 // Service worker for Groundwire Drive — the offline shell for /drive/.
 //
 // Built as a standalone, dependency-free bundle:
-//   bun build src/sw.ts → ../desk/app/documents/sw.js
+//   bun build src/sw.ts → ../desk/app/drive/sw.js
 // The ship serves whatever is at that path from GET /drive/sw.js (with
 // Service-Worker-Allowed: /drive/, so this /drive-scoped worker is allowed).
 //
@@ -37,7 +37,7 @@ const sw = self as unknown as SwGlobalScope;
 
 // --- Versioning -------------------------------------------------------------
 //
-// Bump SHELL_VERSION in lockstep with the ?v= cache-bust in desk/app/documents/
+// Bump SHELL_VERSION in lockstep with the ?v= cache-bust in desk/app/drive/
 // ui.html whenever the app.js / app.css bundle changes. A new version installs
 // a fresh cache and re-precaches the current shell; activate() drops the old.
 const SHELL_VERSION = 'v15';

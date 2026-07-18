@@ -1,7 +1,7 @@
-::  /mar/documents/share-retract.hoon
+::  /mar/drive/share-retract.hoon
 ::    Owner → recipient: "that share is gone" (removes the invite). Noun-only.
 ::
-/-  *documents
+/-  *drive
 |_  r=share-retract
 ++  grow
   |%

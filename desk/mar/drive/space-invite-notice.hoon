@@ -1,8 +1,8 @@
-::  /mar/documents/space-invite-notice.hoon
+::  /mar/drive/space-invite-notice.hoon
 ::    Host → recipient: "you're invited to this space" (populates the
 ::    recipient's space-invites inbox). Noun-only.
 ::
-/-  *documents
+/-  *drive
 |_  n=space-invite-notice
 ++  grow
   |%

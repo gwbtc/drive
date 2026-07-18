@@ -21,13 +21,13 @@ export type DocSummary = {
   blob: { mime: string; size: number } | null;
   acl: Array<{ who: string; role: string }>;
   starred?: boolean;
-  // Groundwire shared spaces: the space-id this owned doc belongs to, or null
+  // Shared spaces: the space-id this owned doc belongs to, or null
   // when it's a personal doc. Present on the listing's `owned` docs and on
   // folder-contents items; absent (undefined) on shared/mirrored entries.
   space?: string | null;
 };
 
-// Groundwire shared spaces (company collaboration). A space is a named,
+// Shared spaces (company collaboration). A space is a named,
 // singly-hosted container whose member roster grants a doc-level role to every
 // doc assigned to the space at once.
 export type SpaceRole = 'viewer' | 'commenter' | 'editor' | 'admin' | 'owner';
@@ -85,7 +85,7 @@ export type Listing = {
   owned: DocSummary[];
   shared: DocSummary[];
   mirrored: Mirror[];
-  // Groundwire shared spaces the caller belongs to.
+  // Shared spaces the caller belongs to.
   spaces: SpaceSummary[];
   // Pending space invitations awaiting the caller's accept/decline.
   spaceInvites: SpaceInvite[];
@@ -196,7 +196,7 @@ async function postTokenAction(action: unknown): Promise<void> {
 }
 
 export async function listDocs(): Promise<Listing> {
-  const r = await fetch(`/~/scry/documents/listing.json`, { credentials: 'include' });
+  const r = await fetch(`/~/scry/drive/listing.json`, { credentials: 'include' });
   if (!r.ok) throw new Error('list failed');
   const j = await r.json();
   // The listing scry emits pending invitations under the hyphenated wire key
@@ -209,7 +209,7 @@ export async function listFolderContents(
   folderId: string | null,
 ): Promise<DocSummary[]> {
   const seg = folderId ?? 'root';
-  const r = await fetch(`/~/scry/documents/folder/${seg}/contents.json`, {
+  const r = await fetch(`/~/scry/drive/folder/${seg}/contents.json`, {
     credentials: 'include',
   });
   if (!r.ok) throw new Error(`folder listing failed: ${r.status}`);
@@ -218,7 +218,7 @@ export async function listFolderContents(
 }
 
 export async function getTokens(docId: string): Promise<TokenInfo[]> {
-  const r = await fetch(`/~/scry/documents/tokens/for/${docId}.json`, {
+  const r = await fetch(`/~/scry/drive/tokens/for/${docId}.json`, {
     credentials: 'include',
   });
   if (!r.ok) throw new Error(`token listing failed: ${r.status}`);
@@ -236,7 +236,7 @@ export type TrashEntry = {
 };
 
 export async function listTrashed(): Promise<TrashEntry[]> {
-  const r = await fetch('/~/scry/documents/trash.json', { credentials: 'include' });
+  const r = await fetch('/~/scry/drive/trash.json', { credentials: 'include' });
   if (!r.ok) throw new Error(`trash listing failed: ${r.status}`);
   const j = await r.json();
   return (j.items ?? []) as TrashEntry[];
@@ -271,7 +271,7 @@ export type VersionInfo = {
 };
 
 export async function listVersionCheckpoints(docId: string): Promise<VersionInfo[]> {
-  const r = await fetch(`/~/scry/documents/doc/${docId}/versions.json`, {
+  const r = await fetch(`/~/scry/drive/doc/${docId}/versions.json`, {
     credentials: 'include',
   });
   if (!r.ok) throw new Error(`versions listing failed: ${r.status}`);
@@ -301,13 +301,13 @@ export type Usage = {
 };
 
 export async function getUsage(): Promise<Usage> {
-  const r = await fetch('/~/scry/documents/usage.json', { credentials: 'include' });
+  const r = await fetch('/~/scry/drive/usage.json', { credentials: 'include' });
   if (!r.ok) throw new Error(`usage failed: ${r.status}`);
   return r.json();
 }
 
 export async function listVersions(docId: string): Promise<HistoryEntry[]> {
-  const r = await fetch(`/~/scry/documents/doc/${docId}/history.json`, {
+  const r = await fetch(`/~/scry/drive/doc/${docId}/history.json`, {
     credentials: 'include',
   });
   if (!r.ok) throw new Error(`history listing failed: ${r.status}`);
@@ -366,7 +366,7 @@ export const deleteComment = (id: string, commentId: string) =>
   postAction({ 'delete-comment': { id, 'comment-id': commentId } });
 
 export async function listComments(docId: string): Promise<Comment[]> {
-  const r = await fetch(`/~/scry/documents/comments/for/${docId}.json`, {
+  const r = await fetch(`/~/scry/drive/comments/for/${docId}.json`, {
     credentials: 'include',
   });
   if (!r.ok) throw new Error(`comment listing failed: ${r.status}`);
@@ -377,11 +377,11 @@ export async function listComments(docId: string): Promise<Comment[]> {
 export const unsubscribeRemote = (id: string) =>
   postAction({ 'unsubscribe-remote': id });
 
-// === Groundwire shared spaces ===============================================
+// === Shared spaces ===============================================
 //
 // Roster scry for one space. Returns null when the space doesn't exist.
 export async function getSpace(id: string): Promise<SpaceDetail | null> {
-  const r = await fetch(`/~/scry/documents/space/${id}.json`, {
+  const r = await fetch(`/~/scry/drive/space/${id}.json`, {
     credentials: 'include',
   });
   if (!r.ok) throw new Error(`space roster failed: ${r.status}`);
@@ -414,7 +414,7 @@ export const leaveSpace = (space: string) =>
 // NOT in the listing's `owned`; this scry returns them directly as a JSON array
 // (each row's `owner` is the host ship). Empty until the host's burst lands.
 export async function getSpaceDocs(space: string): Promise<DocSummary[]> {
-  const r = await fetch(`/~/scry/documents/space-docs/${space}.json`, {
+  const r = await fetch(`/~/scry/drive/space-docs/${space}.json`, {
     credentials: 'include',
   });
   if (!r.ok) throw new Error(`space docs failed: ${r.status}`);

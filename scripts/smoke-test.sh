@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke test the %documents desk on a fresh fakeship via tmux.
+# Smoke test the %drive desk on a fresh fakeship via tmux.
 #
 # Boots a fakeship in a tmux session, runs the install commands, and
 # checks for compile / install errors in the dojo output.
@@ -56,16 +56,16 @@ send_dojo() {
   sleep 3
 }
 
-send_dojo "|new-desk %documents"
-send_dojo "|mount %documents"
+send_dojo "|new-desk %drive"
+send_dojo "|mount %drive"
 
 # Copy desk files into the mounted pier
-echo "Copying desk files into $ROOT/$SHIP/documents/"
-cp -R "$ROOT/desk"/* "$ROOT/$SHIP/documents/"
+echo "Copying desk files into $ROOT/$SHIP/drive/"
+cp -R "$ROOT/desk"/* "$ROOT/$SHIP/drive/"
 
-send_dojo "|commit %documents"
+send_dojo "|commit %drive"
 sleep 4
-send_dojo "|install our %documents"
+send_dojo "|install our %drive"
 sleep 5
 
 # Capture final pane

@@ -143,7 +143,7 @@ export function LeftRail({ active, activeSpaceId, ship, navigate }: Props) {
             <rect x="7" y="7" width="14" height="14" rx="2" />
           </svg>
         </div>
-        <span class="rail-brand-name">Groundwire</span>
+        <span class="rail-brand-name">Drive</span>
       </a>
       <nav class="rail-nav" aria-label="Sections">
         {items.map((it) => {
