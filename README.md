@@ -116,23 +116,23 @@ personal Drive.
 
 ```sh
 # On your ship's dojo:
-|new-desk %documents
-|mount %documents
+|new-desk %drive
+|mount %drive
 ```
 
-Then drop the contents of `desk/` into `~/path/to/your/ship/documents/` and
+Then drop the contents of `desk/` into `~/path/to/your/ship/drive/` and
 commit:
 
 ```sh
-|commit %documents
-|install our %documents
+|commit %drive
+|install our %drive
 ```
 
 Visit `http://your-ship/drive` and log in with your `+code`.
 
 To change the URL path the app binds to (default `/drive`), edit `site+/...`
-in `desk/desk.docket-0` and the `%connect` card in `desk/app/documents.hoon`'s
-`++ init`. Cache-bust strings in `desk/app/documents/ui.html` (`?v=...`) also
+in `desk/desk.docket-0` and the `%connect` card in `desk/app/drive.hoon`'s
+`++ init`. Cache-bust strings in `desk/app/drive/ui.html` (`?v=...`) also
 need bumping when you ship JS/CSS changes.
 
 ## Layout
@@ -140,10 +140,10 @@ need bumping when you ship JS/CSS changes.
 ```
 drive/
   desk/                     Urbit desk: agent, marks, libs
-    app/documents.hoon      The gall agent
-    app/documents/          ui.html, js.js, css.css (compiled assets)
-    sur/documents.hoon      Type definitions
-    mar/documents/          Mark files (action, fact, pokes, notices)
+    app/drive.hoon      The gall agent
+    app/drive/          ui.html, js.js, css.css (compiled assets)
+    sur/drive.hoon      Type definitions
+    mar/drive/          Mark files (action, fact, pokes, notices)
     lib/                    Reused libs (server, schooner, ...)
     desk.bill, desk.docket-0, sys.kelvin
   client/                   JS frontend (Preact + Tiptap + Yjs)
@@ -161,7 +161,7 @@ drive/
 ```sh
 # 1. Install JS deps and build the bundles
 make install
-make build           # typecheck + bundle into desk/app/documents/{js.js,css.css}
+make build           # typecheck + bundle into desk/app/drive/{js.js,css.css}
 make watch           # watch mode
 
 # 2. Boot a fakeship (foreground, with dojo)
