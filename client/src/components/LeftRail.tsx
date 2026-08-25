@@ -1,3 +1,4 @@
+import { setNickname, myNickname, displayName } from '../api';
 import { useState } from 'preact/hooks';
 import { dropOnto, isDragging } from '../ui/dragState';
 import { createSpace } from '../api';
@@ -306,7 +307,19 @@ export function LeftRail({ active, activeSpaceId, ship, navigate }: Props) {
       </nav>
 
       <div class="rail-foot">
-        <div class="rail-ship">{ship}</div>
+        <button
+          class="rail-ship"
+          title="Click to set your nickname"
+          onClick={() => {
+            const next = window.prompt(
+              'Set your nickname (shown to others in your spaces):',
+              myNickname(),
+            );
+            if (next !== null) void setNickname(next.trim());
+          }}
+        >
+          {displayName(ship)}
+        </button>
       </div>
     </aside>
     {showJoin && <JoinSpaceDialog onClose={() => setShowJoin(false)} />}

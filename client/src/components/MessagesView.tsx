@@ -1,3 +1,4 @@
+import { displayName } from '../api';
 // The Messages view: 1:1 direct messages. A master-detail layout — the
 // conversation list on the left, the active thread on the right. On phones it
 // collapses to one pane at a time (list at /drive/messages, thread at
@@ -85,7 +86,7 @@ function DmThreadPane({
         <button class="btn-icon dm-back" aria-label="Back to conversations" onClick={onBack}>
           ‹
         </button>
-        <span class="patp dm-thread-peer">{withTilde(peer)}</span>
+        <span class="patp dm-thread-peer">{displayName(peer)}</span>
       </header>
       <ChatThread
         messages={messages}
@@ -94,7 +95,7 @@ function DmThreadPane({
         canPost={true}
         onSend={(t) => sendDm(peer, t).catch(toast.error)}
         onDelete={(m) => deleteDm(peer, m.id).catch(toast.error)}
-        placeholder={`Message ${withTilde(peer)}…`}
+        placeholder={`Message ${displayName(peer)}…`}
         emptyLabel="No messages yet — say hello 👋"
       />
     </div>
@@ -157,7 +158,7 @@ export function MessagesView({
                     }}
                   >
                     <div class="dm-list-row1">
-                      <span class="patp dm-list-peer">{withTilde(c.peer)}</span>
+                      <span class="patp dm-list-peer">{displayName(c.peer)}</span>
                       <span class="dm-list-time">{timeAgo(c['last-at'])}</span>
                     </div>
                     <div class="dm-list-row2">

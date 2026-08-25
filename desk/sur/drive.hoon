@@ -183,7 +183,13 @@
       [%space-chat-log msgs=(list chat-msg)]  ::  recent history burst (on watch)
       [%space-chat-msg =chat-msg]             ::  a new message posted to the room
       [%space-chat-del =msg-id]               ::  a message was deleted
+      ::  member @p → nickname, fanned to every member of a space
+      [%space-nicknames nicks=(map @p @t)]
   ==
+::
+::  member-ship → space-host: "here is my nickname". The host stamps the
+::  sender (src) as the subject, so a nickname can't be set for someone else.
++$  set-nickname-poke  [nick=@t]
 ::
 ::  editor-ship → owner-ship comment mutations (mirrors can't edit
 ::  comments locally; they forward and the owner fans back)
@@ -261,5 +267,7 @@
       [%send-dm who=@p text=@t]
       [%delete-dm who=@p =msg-id]
       [%read-dm who=@p]
+      ::  set this ship's own nickname; '' clears it
+      [%set-nickname nick=@t]
   ==
 --

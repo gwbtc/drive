@@ -1,3 +1,4 @@
+import { displayName } from '../api';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import {
   shareDoc,
@@ -107,12 +108,12 @@ export function ShareDialog({ doc, ship, onClose }: Props) {
           <h3>People</h3>
           <ul class="acl-list">
             <li class="acl-item">
-              <span class="acl-who">{ship}</span>
+              <span class="acl-who">{displayName(ship)}</span>
               <span class="acl-role muted">owner</span>
             </li>
             {acl.map((entry) => (
               <li key={entry.who} class="acl-item">
-                <span class="acl-who">{entry.who}</span>
+                <span class="acl-who">{displayName(entry.who)}</span>
                 <span class="acl-role">{entry.role}</span>
                 <button class="btn-icon" aria-label={`Revoke ${entry.who}`} onClick={() => onRevoke(entry.who)}>×</button>
               </li>

@@ -1,3 +1,4 @@
+import { displayName } from '../api';
 import { useEffect, useState } from 'preact/hooks';
 import type { Editor } from '@tiptap/core';
 import {
@@ -145,7 +146,7 @@ export function CommentsPane({ docId, ship, editor, commentsVersion }: Props) {
               </div>
             )}
             <div class="comment-head">
-              <span class="comment-author">{c.author}</span>
+              <span class="comment-author">{displayName(c.author)}</span>
               <span class="comment-date">{formatDate(c.created)}</span>
             </div>
             <div class="comment-body">{c.text}</div>

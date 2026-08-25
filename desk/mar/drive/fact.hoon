@@ -157,6 +157,15 @@
       :~  type+s+'space-chat-del'
           id+s+(scot %uv msg-id.fac)
       ==
+        %space-nicknames
+      %-  pairs
+      :~  type+s+'space-nicknames'
+          :-  %nicks
+          %-  pairs
+          %+  turn  ~(tap by nicks.fac)
+          |=  [who=@p n=@t]
+          [(scot %p who) s+n]
+      ==
     ==
   --
 ++  grab
