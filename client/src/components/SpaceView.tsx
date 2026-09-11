@@ -1,3 +1,4 @@
+import { displayName } from '../api';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import {
   listDocs,
@@ -272,7 +273,7 @@ export function SpaceView({ spaceId, tab, ship, navigate }: Props) {
           <h1 class="view-title">{title}</h1>
           {space && (
             <p class="muted small">
-              <span class="patp">{space.host}</span>
+              <span class="patp">{displayName(space.host)}</span>
               {joined ? (
                 // members/created are placeholders for a joined space — the
                 // roster isn't mirrored — so show host + role only.

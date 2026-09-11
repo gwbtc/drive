@@ -1,3 +1,4 @@
+import { displayName } from '../api';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { listDocs, formatDate, type DocSummary } from '../api';
 import { personalDocs } from '../spaces';
@@ -78,7 +79,7 @@ export function HubView({ ship, navigate }: Props) {
     <div class="hub">
       <div class="hub-greet">
         <h1>Welcome back</h1>
-        <p class="muted">Signed in as <span class="patp">{ship}</span></p>
+        <p class="muted">Signed in as <span class="patp">{displayName(ship)}</span></p>
       </div>
 
       {/* Pending space invitations — prominent, above the drive summary.
@@ -169,7 +170,7 @@ export function HubView({ ship, navigate }: Props) {
                   <button class="hub-row" onClick={() => open(d)}>
                     <span class="hub-row-icon">{TYPE_ICON[d.type] ?? '📄'}</span>
                     <span class="hub-row-title">{d.title || 'Untitled'}</span>
-                    <span class="hub-row-meta patp">{d.owner}</span>
+                    <span class="hub-row-meta patp">{displayName(d.owner)}</span>
                   </button>
                 </li>
               ))}

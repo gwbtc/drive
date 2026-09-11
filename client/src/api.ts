@@ -124,6 +124,10 @@ export type Listing = {
   spaceInvites: SpaceInvite[];
   // Total unread DMs across all threads (drives the Messages rail badge).
   dmUnread: number;
+  // peer @p (with leading ~) → nickname, shown everywhere in place of the @p.
+  nicknames: Record<string, string>;
+  // this ship's own nickname ('' if unset).
+  myNickname: string;
 };
 
 export type FolderContents = { items: DocSummary[] };
@@ -204,6 +208,27 @@ export const ourShip = (): string | null => {
   return seed ? normalizeShip(seed) : null;
 };
 
+// Nickname cache: populated by listDocs(), read by displayName() everywhere.
+// A module singleton (like _ship) so any component can resolve a @p → nickname
+// without threading the map through props.
+let _nicknames: Record<string, string> = {};
+
+// A ship's display name: its nickname if one is known, else the ~@p itself.
+export const displayName = (ship: string): string => {
+  const key = normalizeShip(ship);
+  const nick = _nicknames[key];
+  return nick && nick.length ? nick : key;
+};
+
+export const setNickname = (nick: string): Promise<void> =>
+  postAction({ 'set-nickname': { nick } });
+
+// This ship's own nickname ('' if unset), from the cache.
+export const myNickname = (): string => {
+  const me = ourShip();
+  return me ? _nicknames[me] ?? '' : '';
+};
+
 async function postAction(action: unknown): Promise<void> {
   const r = await fetch(`${BASE}/action`, {
     method: 'POST',
@@ -237,10 +262,13 @@ export async function listDocs(): Promise<Listing> {
   // The listing scry emits pending invitations under the hyphenated wire key
   // `space-invites`; surface them on the camelCase `spaceInvites` the client
   // reads. (owned/shared/mirrored/spaces already match the wire verbatim.)
+  _nicknames = j['nicknames'] ?? {};
   return {
     ...j,
     spaceInvites: j['space-invites'] ?? [],
     dmUnread: j['dm-unread'] ?? 0,
+    nicknames: j['nicknames'] ?? {},
+    myNickname: j['my-nickname'] ?? '',
   } as Listing;
 }
 

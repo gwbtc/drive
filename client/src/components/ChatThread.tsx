@@ -1,3 +1,4 @@
+import { displayName } from '../api';
 // Shared chat surface: a scrolling message list + a composer. Used by both
 // the per-space room (SpaceChat) and 1:1 DMs (MessagesView). Purely
 // presentational — the parent owns fetching, live updates, and send/delete.
@@ -136,7 +137,7 @@ export function ChatThread({
                   {startGroup && (
                     <div class="chat-msg-head">
                       <span class="patp" style={{ color: userColor(m.author) }}>
-                        {m.author}
+                        {displayName(m.author)}
                       </span>
                       <span class="chat-msg-time">{msgTime(m.at)}</span>
                     </div>

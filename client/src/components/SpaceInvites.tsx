@@ -1,3 +1,4 @@
+import { displayName } from '../api';
 import { useEffect, useState } from 'preact/hooks';
 import { acceptSpaceInvite, declineSpaceInvite, type SpaceInvite } from '../api';
 import { useSpaceInvites } from '../useSpaces';
@@ -72,7 +73,7 @@ export function SpaceInvites() {
           <li key={inv.id} class="space-invite-card" data-testid="space-invite-row">
             <div class="space-invite-body">
               <p class="space-invite-text">
-                <span class="patp">{inv.host}</span> invited you to{' '}
+                <span class="patp">{displayName(inv.host)}</span> invited you to{' '}
                 <strong>{inv.name || 'Untitled space'}</strong> as {inv.role}
               </p>
             </div>

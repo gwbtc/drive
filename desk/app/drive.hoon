@@ -15,7 +15,8 @@
 |%
 +$  card  card:agent:gall
 +$  versioned-state
-  $%  state-12
+  $%  state-13
+      state-12
       state-11
       state-10
       state-9
@@ -28,6 +29,29 @@
       state-2-pre-octs
       state-1-pre-folders
       state-0-pre-image
+  ==
++$  state-13
+  $:  %13
+      docs=(map doc-id document)
+      mirrors=(map doc-id mirror)
+      tokens=(map @uv token-grant)
+      sessions=(map @uv token-session)
+      sse-clients=(map @ta sse-sub)
+      blobs=(map doc-id file-blob)
+      children=(map doc-id (set doc-id))
+      pending-sse=(list pending-sse-event)
+      invites=(map doc-id invite)
+      starred=(set doc-id)
+      thumbs=(map doc-id octs)
+      spaces=(map space-id space)
+      doc-space=(map doc-id space-id)
+      space-mirrors=(map space-id space-mirror)
+      space-invites=(map space-id space-invite)
+      space-chat=(map space-id (list chat-msg))
+      space-read=(map space-id @da)
+      dms=(map @p dm-thread)
+      my-nickname=@t                         ::  this ship's own nickname ('' = none)
+      nicknames=(map @p @t)                  ::  peer @p → nickname, learned from hosts
   ==
 +$  state-12
   $:  %12
@@ -311,7 +335,7 @@
 --
 ::
 %-  agent:dbug
-=|  state-12
+=|  state-13
 =*  state  -
 ^-  agent:gall
 ::
@@ -579,14 +603,25 @@
         *(map space-id @da)
         *(map @p dm-thread)
     ==
+  =/  up-to-13
+    |=  s12=state-12
+    ^-  state-13
+    :*  %13
+        docs.s12  mirrors.s12  tokens.s12  sessions.s12  sse-clients.s12
+        blobs.s12  children.s12  pending-sse.s12  invites.s12  starred.s12
+        thumbs.s12  spaces.s12  doc-space.s12  space-mirrors.s12
+        space-invites.s12  space-chat.s12  space-read.s12  dms.s12
+        ''  *(map @p @t)
+    ==
   =/  s  !<(versioned-state old)
   ?-  -.s
-      %12  [rebind this(state s)]
-      %11  [rebind this(state (up-to-12 s))]
-      %10  [rebind this(state (up-to-12 (up-to-11 s)))]
-      %9  [rebind this(state (up-to-12 (up-to-11 (up-to-10 s))))]
-      %8  [rebind this(state (up-to-12 (up-to-11 (up-to-10 (up-to-9 s)))))]
-      %7  [rebind this(state (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s))))))]
+      %13  [rebind this(state s)]
+      %12  [rebind this(state (up-to-13 s))]
+      %11  [rebind this(state (up-to-13 (up-to-12 s)))]
+      %10  [rebind this(state (up-to-13 (up-to-12 (up-to-11 s))))]
+      %9  [rebind this(state (up-to-13 (up-to-12 (up-to-11 (up-to-10 s)))))]
+      %8  [rebind this(state (up-to-13 (up-to-12 (up-to-11 (up-to-10 (up-to-9 s))))))]
+      %7  [rebind this(state (up-to-13 (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s)))))))]
       %6
     =/  upgraded-docs=(map doc-id state-7-document)
       (~(run by docs-pre-trash.s) upgrade-doc-6-to-7)
@@ -601,7 +636,7 @@
           children.s
           pending-sse.s
       ==
-    [rebind this(state (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7))))))]
+    [rebind this(state (up-to-13 (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7)))))))]
       %5
     =/  upgraded-docs=(map doc-id state-7-document)
       (~(run by docs-pre-anchor.s) upgrade-doc-5-to-6)
@@ -616,7 +651,7 @@
           children.s
           pending-sse.s
       ==
-    [rebind this(state (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7))))))]
+    [rebind this(state (up-to-13 (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7)))))))]
       %4
     =/  upgraded-docs=(map doc-id state-7-document)
       (~(run by docs-pre-comments.s) upgrade-doc-4-to-5)
@@ -631,7 +666,7 @@
           children.s
           pending-sse.s
       ==
-    [rebind this(state (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7))))))]
+    [rebind this(state (up-to-13 (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7)))))))]
       %3
     =/  upgraded-docs=(map doc-id state-7-document)
       (~(run by docs.s) upgrade-doc-4-to-5)
@@ -646,7 +681,7 @@
           children.s
           *(list pending-sse-event)
       ==
-    [rebind this(state (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7))))))]
+    [rebind this(state (up-to-13 (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7)))))))]
       %2
     =/  upgraded-docs=(map doc-id state-7-document)
       (~(run by docs-pre-octs.s) upgrade-doc-2-to-3)
@@ -663,7 +698,7 @@
           children.s
           *(list pending-sse-event)
       ==
-    [rebind this(state (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7))))))]
+    [rebind this(state (up-to-13 (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7)))))))]
       %1
     =/  upgraded-docs=(map doc-id state-7-document)
       (~(run by docs-old.s) upgrade-doc-1-to-3)
@@ -682,7 +717,7 @@
           (rebuild-children upgraded-docs)
           *(list pending-sse-event)
       ==
-    [rebind this(state (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7))))))]
+    [rebind this(state (up-to-13 (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7)))))))]
       %0
     =/  upgraded-docs=(map doc-id state-7-document)
       (~(run by docs-v0.s) upgrade-doc-1-to-3)
@@ -699,7 +734,7 @@
           (rebuild-children upgraded-docs)
           *(list pending-sse-event)
       ==
-    [rebind this(state (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7))))))]
+    [rebind this(state (up-to-13 (up-to-12 (up-to-11 (up-to-10 (up-to-9 (up-to-8 s7)))))))]
   ==
 ::
 ++  on-poke
@@ -738,7 +773,7 @@
 ::
 ::  Helper core. Sample carries bowl + state. Helpers return (quip card _state).
 ::
-|_  [=bowl:gall state=state-12]
+|_  [=bowl:gall state=state-13]
 +*  docs         docs.state
     mirrors      mirrors.state
     tokens       tokens.state
@@ -757,6 +792,8 @@
     space-chat   space-chat.state
     space-read   space-read.state
     dms          dms.state
+    my-nickname  my-nickname.state
+    nicknames    nicknames.state
 ::
 ::  =================================================================
 ::  init / dispatchers
@@ -819,6 +856,10 @@
       %drive-dm-poke
     =+  !<(d=dm-poke vase)
     (recv-dm-poke src.bowl d)
+    ::
+      %drive-set-nickname
+    =+  !<(p=set-nickname-poke vase)
+    (recv-set-nickname src.bowl p)
   ==
 ::
 ++  handle-watch
@@ -1460,6 +1501,7 @@
       [%send-dm (ot ~[who+p-fist text+so])]
       [%delete-dm (ot ~[who+p-fist id+uv-fist])]
       [%read-dm p-fist]
+      [%set-nickname (ot ~[nick+so])]
   ==
 ::
 ::  =================================================================
@@ -2315,6 +2357,27 @@
     =/  th  (fall (~(get by dms) who.action) *dm-thread)
     =.  state  state(dms (~(put by dms) who.action th(read now.bowl)))
     fanout-listing
+    ::
+      %set-nickname
+    =.  my-nickname  nick.action
+    =.  nicknames  (~(put by nicknames) our.bowl nick.action)
+    ::  tell every host of a space we've joined, and re-fan our own hosted
+    ::  spaces, so all our co-members learn the new nickname.
+    =/  host-pokes=(list card)
+      %+  turn
+        ~(tap in (silt (turn ~(val by space-mirrors) |=(sm=space-mirror host.sm))))
+      |=  h=@p
+      ^-  card
+      :*  %pass  /set-nickname  %agent  [h %drive]
+          %poke  %drive-set-nickname  !>(`set-nickname-poke`[nick.action])
+      ==
+    =/  fan=(list card)
+      %+  turn  ~(tap by spaces)
+      |=  [sid=space-id *]
+      ^-  card
+      (give-space-fact sid [%space-nicknames (space-nicknames-for sid)])
+    =^  feed  state  fanout-listing
+    [:(weld host-pokes fan feed) state]
   ==
 ::
 ::  Forward a comment mutation from this (mirror) ship to the doc's owner.
@@ -2412,6 +2475,39 @@
   ==
 ::  member → host: post to / delete from a room we host. Authorize against
 ::  membership (silently drop non-members); the host is the single writer.
+::  a member told us (its host) its nickname; record it against the sender
+::  (src, unspoofable) and re-fan every space we host that contains it.
+++  recv-set-nickname
+  |=  [src=@p p=set-nickname-poke]
+  ^-  (quip card _state)
+  =/  mine  (my-spaces-with-member src)
+  ?~  mine  `state
+  =.  nicknames  (~(put by nicknames) src nick.p)
+  =^  feed  state  fanout-listing
+  :_  state
+  %+  weld  feed
+  %+  turn  mine
+  |=  sid=space-id
+  (give-space-fact sid [%space-nicknames (space-nicknames-for sid)])
+::  space-ids we host whose roster contains .who
+++  my-spaces-with-member
+  |=  who=@p
+  ^-  (list space-id)
+  %+  murn  ~(tap by spaces)
+  |=  [sid=space-id spc=space]
+  ?:((~(has by members.spc) who) `sid ~)
+::  the nickname map restricted to a hosted space's roster
+++  space-nicknames-for
+  |=  sid=space-id
+  ^-  (map @p @t)
+  =/  spc  (~(get by spaces) sid)
+  ?~  spc  ~
+  %-  ~(gas by *(map @p @t))
+  %+  murn  ~(tap in ~(key by members.u.spc))
+  |=  who=@p
+  ^-  (unit [@p @t])
+  =/  n  (~(get by nicknames) who)
+  ?~(n ~ `[who u.n])
 ++  recv-space-chat-poke
   |=  [src=@p p=space-chat-poke]
   ^-  (quip card _state)
@@ -2719,6 +2815,7 @@
   =/  meta-fact=fact  [%space-meta name.u.spc u.mr]
   =/  roster-fact=fact  [%space-roster members.u.spc]
   =/  chat-fact=fact  [%space-chat-log (fall (~(get by space-chat) sid) ~)]
+  =/  nicks-fact=fact  [%space-nicknames (space-nicknames-for sid)]
   =/  doc-cards=(list card)
     %+  turn  (docs-in-space sid)
     |=  [did=doc-id sd=space-doc]
@@ -2728,6 +2825,7 @@
   :*  [%give %fact ~ %drive-fact !>(meta-fact)]
       [%give %fact ~ %drive-fact !>(roster-fact)]
       [%give %fact ~ %drive-fact !>(chat-fact)]
+      [%give %fact ~ %drive-fact !>(nicks-fact)]
       doc-cards
   ==
 ::
@@ -2831,6 +2929,10 @@
     =/  sm2=space-mirror  u.sm(members members.fact)
     =^  feed  state  fanout-listing
     [feed state(space-mirrors (~(put by space-mirrors) sid sm2))]
+      %space-nicknames
+    =.  nicknames  (~(uni by nicknames) nicks.fact)
+    =^  feed  state  fanout-listing
+    [feed state]
       %space-kicked
     =^  feed  state  fanout-listing
     [feed state(space-mirrors (~(del by space-mirrors) sid))]
@@ -3449,6 +3551,12 @@
       spaces+a+(weld hosted joined)
       space-invites+a+invite-list
       dm-unread+(numb dm-total)
+      my-nickname+s+my-nickname
+      :-  %nicknames
+      %-  pairs
+      %+  turn  ~(tap by nicknames)
+      |=  [who=@p n=@t]
+      [(scot %p who) s+n]
   ==
 ::
 ::  enjs-trash-listing: just the trashed-docs view. Each entry includes

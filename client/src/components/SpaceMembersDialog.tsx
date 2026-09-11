@@ -1,3 +1,4 @@
+import { displayName } from '../api';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import {
   getSpace,
@@ -168,7 +169,7 @@ export function SpaceMembersDialog({ space, ship, onClose, navigate }: Props) {
               const isSelf = member.who === ship;
               return (
                 <li key={member.who} class="acl-item" data-testid="space-member-row">
-                  <span class="acl-who patp">{member.who}</span>
+                  <span class="acl-who patp">{displayName(member.who)}</span>
                   {canManage && !isSelf ? (
                     <select
                       class="select space-role-select"

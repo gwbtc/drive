@@ -1,3 +1,4 @@
+import { displayName } from '../api';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { getSpace, type SpaceSummary, type SpaceMember } from '../api';
 import { toast } from '../ui/toast';
@@ -81,7 +82,7 @@ export function SpaceDirectory({ space, ship, onClose }: Props) {
               return (
                 <li key={member.who} class="acl-item" data-testid="space-directory-row">
                   <span class="acl-who patp">
-                    {member.who}
+                    {displayName(member.who)}
                     {isSelf && <span class="space-directory-you"> (you)</span>}
                   </span>
                   <span class="acl-role">{member.role}</span>
