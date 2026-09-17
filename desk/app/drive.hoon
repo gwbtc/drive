@@ -857,7 +857,7 @@
     =+  !<(d=dm-poke vase)
     (recv-dm-poke src.bowl d)
     ::
-      %drive-set-nickname
+      %drive-set-nickname-poke
     =+  !<(p=set-nickname-poke vase)
     (recv-set-nickname src.bowl p)
   ==
@@ -2369,7 +2369,7 @@
       |=  h=@p
       ^-  card
       :*  %pass  /set-nickname  %agent  [h %drive]
-          %poke  %drive-set-nickname  !>(`set-nickname-poke`[nick.action])
+          %poke  %drive-set-nickname-poke  !>(`set-nickname-poke`[nick.action])
       ==
     =/  fan=(list card)
       %+  turn  ~(tap by spaces)
