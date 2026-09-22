@@ -1,0 +1,51 @@
+name: mobile test
+
+# The Android app under mobile/. Runs only when it changes, so Hoon and
+# web PRs do not pay for a Gradle run and an Android SDK install.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/mobile-test.yml'
+  pull_request:
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/mobile-test.yml'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: mobile
+
+jobs:
+  unit-and-android-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK 36
+        run: |
+          SDKMGR="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMGR" --licenses >/dev/null 2>&1 || true
+          "$SDKMGR" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Unit tests (JVM)
+        run: ./gradlew :shared:desktopTest --no-daemon
+
+      - name: Debug APK builds
+        run: ./gradlew :androidApp:assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: drive-mobile-debug-apk
+          path: mobile/androidApp/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

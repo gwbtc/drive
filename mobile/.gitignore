@@ -1,0 +1,15 @@
+.gradle/
+build/
+*/build/
+.kotlin/
+local.properties
+.idea/
+*.iml
+.DS_Store
+*.keystore
+keystore.properties
+iosApp/iosApp.xcodeproj/xcuserdata/
+iosApp/iosApp.xcodeproj/project.xcworkspace/xcuserdata/
+
+# The repo root ignores a file named `urbit` (a vere binary); this is a package.
+!urbit/

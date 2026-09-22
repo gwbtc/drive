@@ -112,6 +112,20 @@ Personal files, personal sharing, and share-links for people without a ship
 all keep working alongside spaces — a member's own ship is still their
 personal Drive.
 
+## Mobile app
+
+`mobile/` is a native phone client for the chat half of Drive: your spaces'
+rooms and your direct messages, with notifications when someone else writes.
+It logs into your ship with the `+code` and talks to the same HTTP surface
+the web client uses (the scries, `POST /drive/action`, the SSE change feed);
+the ship stays the only source of truth. Android today, built as Kotlin
+Multiplatform with a Compose UI so an iOS build is an Xcode shell away.
+See [mobile/README.md](mobile/README.md), and for the two questions that
+matter most, [docs/mobile-notifications.md](docs/mobile-notifications.md)
+(what works with and without a push server) and
+[docs/mobile-ios.md](docs/mobile-ios.md) (what the iOS port and TestFlight
+involve). Releases are tag-driven and CI-signed: [mobile/RELEASE.md](mobile/RELEASE.md).
+
 ## Install
 
 ```sh
@@ -152,6 +166,10 @@ drive/
       components/           Editor, SpaceView, ShareDialog, SpaceMembersDialog, ...
       api.ts, app.tsx, index.tsx
       styles/app.css
+  mobile/                   Android app (Kotlin Multiplatform + Compose): space chat, DMs, notifications
+    shared/                 transport, Drive client, store, UI; androidMain has the service
+    androidApp/             the application shell (id, version, signing)
+    iosApp/                 the Swift shell an Xcode project needs
   scripts/                  fakeship harness + e2e drivers
   Makefile
 ```

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Deliberately empty. Every component, permission and resource lives in
+  :shared's library manifest (shared/src/androidMain/AndroidManifest.xml)
+  and merges in; this module only supplies the application id, version
+  and signing from its build script.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" />

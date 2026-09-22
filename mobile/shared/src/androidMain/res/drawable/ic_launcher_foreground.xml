@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A speech bubble on the adaptive-icon safe zone; orange on the dark
+     background colour. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#F2842C"
+        android:pathData="M54,30 C38,30 26,40 26,52 C26,59 30,65 37,69 L34,80 L46,73 C48.6,73.7 51.3,74 54,74 C70,74 82,64 82,52 C82,40 70,30 54,30 Z" />
+    <path
+        android:fillColor="#1B1B1F"
+        android:pathData="M42,49 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 Z M50,49 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 Z M58,49 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 Z" />
+</vector>
