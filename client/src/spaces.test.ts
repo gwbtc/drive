@@ -4,6 +4,7 @@ import {
   personalDocs,
   spaceDocs,
   isJoinedSpace,
+  canAddToSpace,
   visibleInvites,
   reconcileHiddenInvites,
 } from './spaces';
@@ -106,5 +107,22 @@ describe('space-invite optimistic-hide', () => {
     invites = [inv('space-1')];
     hidden = reconcileHiddenInvites(hidden, invites);
     expect(visibleInvites(invites, hidden).map((i) => i.id)).toEqual(['space-1']);
+  });
+});
+
+describe('canAddToSpace', () => {
+  test('editor and above may add content; viewer/commenter may not', () => {
+    expect(canAddToSpace({ role: 'owner' })).toBe(true);
+    expect(canAddToSpace({ role: 'admin' })).toBe(true);
+    expect(canAddToSpace({ role: 'editor' })).toBe(true);
+    expect(canAddToSpace({ role: 'commenter' })).toBe(false);
+    expect(canAddToSpace({ role: 'viewer' })).toBe(false);
+  });
+
+  test('is a role question, not a hosted/joined one', () => {
+    // The whole point of the feature: a member of a space hosted ELSEWHERE
+    // gets the same add rights as the host's own editor.
+    expect(canAddToSpace({ role: 'editor', joined: true } as any)).toBe(true);
+    expect(canAddToSpace({ role: 'viewer', joined: false } as any)).toBe(false);
   });
 });
