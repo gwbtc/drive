@@ -651,3 +651,141 @@ describe('cross-ship DMs', () => {
     }, 60000);
   }, 120000);
 });
+
+// A member (not the host) adds content to a space: the host makes the doc,
+// records it in the space and fans it to every member — including back to
+// the member who asked. Gate: editor+ only.
+describe('members add content to a space', () => {
+  const PNG = Uint8Array.from(
+    atob(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+    ),
+    (c) => c.charCodeAt(0),
+  );
+
+  async function joinAsEditor(name: string): Promise<string> {
+    const sid = await createSpaceA(name);
+    await action(A, { 'add-member': { space: sid, who: SHIP_B, role: 'editor' } });
+    await action(B, { 'join-space': { host: SHIP_A, space: sid } });
+    await waitFor(async () => {
+      const l = await scry(B, 'listing');
+      const s = (l.spaces as any[]).find((x) => x.id === sid && x.joined);
+      return s && s.role === 'editor' ? true : undefined;
+    }, 60000);
+    return sid;
+  }
+
+  test('an editor member creates a doc in the host’s space; both ships list it; the member edits it', async () => {
+    const sid = await joinAsEditor(`ts-madd-${RUN}`);
+    const title = `ts-member-made-${RUN}`;
+
+    // B asks for a doc in A's space. B holds nothing itself: the doc must
+    // show up on A as an OWNED doc assigned to the space...
+    await action(B, { 'space-create': { space: sid, 'doc-type': 'text', title } });
+    const onA = await waitFor(async () => {
+      const l = await scry(A, 'listing');
+      return (l.owned as any[]).find((d) => d.title === title && d.space === sid);
+    }, 60000);
+    expect(onA.type).toBe('text');
+
+    // ...and come back to B through the space's doc list (%space-doc fact).
+    const onB = await waitFor(async () => {
+      const docs = await scry(B, `space-docs/${sid}`);
+      return (docs as any[]).find((d) => d.id === onA.id);
+    }, 60000);
+    expect(onB.title).toBe(title);
+    expect(onB.owner).toBe(`~${SHIP_A}`);
+
+    // B opens its own creation the way it opens any space doc, and edits it;
+    // the edit lands on A (space editor role authorizes it).
+    await action(B, { 'subscribe-remote': { owner: SHIP_A, id: onA.id } });
+    await waitFor(async () => {
+      try {
+        return (await docState(B, onA.id)) ? true : undefined;
+      } catch {
+        return undefined;
+      }
+    }, 60000);
+    const { update } = encodeInsert(null, 0, 'written by the member');
+    await action(B, { 'submit-update': { id: onA.id, update } });
+    const seen = await waitFor(async () => {
+      const t = rebuildText(await docState(A, onA.id));
+      return t.includes('written by the member') ? t : undefined;
+    }, 60000);
+    expect(seen).toContain('written by the member');
+  }, 180000);
+
+  test('an editor member uploads a file into the host’s space; the host stores the bytes', async () => {
+    const sid = await joinAsEditor(`ts-mupl-${RUN}`);
+    const title = `ts-member-file-${RUN}`;
+
+    // The member's own /upload route forwards to the host: 202, no id.
+    const up = await fetch(`${B.base}/drive/upload?title=${title}&space=${sid}`, {
+      method: 'POST',
+      headers: { cookie: B.cookie, 'content-type': 'image/png' },
+      body: PNG,
+    });
+    expect(up.status).toBe(202);
+    expect((await up.json()).forwarded).toBe(true);
+
+    // The host now owns an image doc in the space, with the bytes.
+    const onA = await waitFor(async () => {
+      const l = await scry(A, 'listing');
+      return (l.owned as any[]).find((d) => d.title === title && d.space === sid);
+    }, 60000);
+    expect(onA.type).toBe('image');
+    const blob = await fetch(`${A.base}/drive/blob?id=${onA.id}`, {
+      headers: { cookie: A.cookie },
+    });
+    expect(blob.status).toBe(200);
+    expect(Array.from(new Uint8Array(await blob.arrayBuffer()))).toEqual(Array.from(PNG));
+
+    // And the member sees it in the space's doc list.
+    await waitFor(async () => {
+      const docs = await scry(B, `space-docs/${sid}`);
+      return (docs as any[]).some((d) => d.id === onA.id) ? true : undefined;
+    }, 60000);
+
+    // The host's own upload into a space it hosts records the space directly.
+    const hostTitle = `ts-host-file-${RUN}`;
+    const hup = await fetch(`${A.base}/drive/upload?title=${hostTitle}&space=${sid}`, {
+      method: 'POST',
+      headers: { cookie: A.cookie, 'content-type': 'image/png' },
+      body: PNG,
+    });
+    expect(hup.status).toBe(200);
+    const { id: hostId } = await hup.json();
+    const hl = await scry(A, 'listing');
+    expect((hl.owned as any[]).find((d) => d.id === hostId)?.space).toBe(sid);
+    await waitFor(async () => {
+      const docs = await scry(B, `space-docs/${sid}`);
+      return (docs as any[]).some((d) => d.id === hostId) ? true : undefined;
+    }, 60000);
+  }, 180000);
+
+  test('a viewer member’s create is refused by the host (nothing is made)', async () => {
+    const sid = await joinAsEditor(`ts-mgate-${RUN}`);
+    await action(A, { 'set-member-role': { space: sid, who: SHIP_B, role: 'viewer' } });
+    await waitFor(async () => {
+      const l = await scry(B, 'listing');
+      const s = (l.spaces as any[]).find((x) => x.id === sid);
+      return s && s.role === 'viewer' ? true : undefined;
+    }, 60000);
+
+    const title = `ts-viewer-made-${RUN}`;
+    // The member's action succeeds locally (it's just a poke to the host)...
+    await action(B, { 'space-create': { space: sid, 'doc-type': 'note', title } });
+    // ...but the host nacks it. Prove absence by waiting for something that
+    // WOULD land afterwards — a host-made doc — and then checking.
+    const probe = await createDoc(A, 'note', `ts-probe-${RUN}`);
+    await action(A, { 'set-doc-space': { id: probe, space: sid } });
+    await waitFor(async () => {
+      const docs = await scry(B, `space-docs/${sid}`);
+      return (docs as any[]).some((d) => d.id === probe) ? true : undefined;
+    }, 60000);
+    const l = await scry(A, 'listing');
+    expect((l.owned as any[]).some((d) => d.title === title)).toBe(false);
+    const docs = await scry(B, `space-docs/${sid}`);
+    expect((docs as any[]).some((d) => d.title === title)).toBe(false);
+  }, 180000);
+});

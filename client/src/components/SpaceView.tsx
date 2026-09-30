@@ -2,7 +2,8 @@ import { displayName } from '../api';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import {
   listDocs,
-  createDoc,
+  createInSpace,
+  uploadToSpace,
   setDocSpace,
   renameDoc,
   copyDoc,
@@ -15,6 +16,7 @@ import {
   type SpaceSummary,
 } from '../api';
 import { FilesRow } from './FilesRow';
+import { generateAndUploadThumb } from './ThumbImg';
 import { SpaceMembersDialog } from './SpaceMembersDialog';
 import { SpaceDirectory } from './SpaceDirectory';
 import { SpaceChat } from './SpaceChat';
@@ -24,7 +26,7 @@ import { confirmDialog, promptDialog } from '../ui/dialogs';
 import { openContextMenu } from '../ui/contextMenu';
 import { moveToSpaceItems } from '../ui/moveToSpace';
 import { ViewError } from '../ui/ViewError';
-import { spaceDocs, isJoinedSpace } from '../spaces';
+import { spaceDocs, isJoinedSpace, canAddToSpace } from '../spaces';
 
 type Props = {
   spaceId: string;
@@ -49,6 +51,7 @@ export function SpaceView({ spaceId, tab, ship, navigate }: Props) {
   const [error, setError] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [showDirectory, setShowDirectory] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const refresh = async () => {
     try {
@@ -81,9 +84,22 @@ export function SpaceView({ spaceId, tab, ship, navigate }: Props) {
     // The listing feed bumps when the host adds/removes docs too, so this same
     // refresh re-fetches space-docs for a joined space — live updates for free.
     const unsub = listingFeed.subscribe(refresh);
+    // The host nacked something we tried to add to a JOINED space (we lost
+    // membership, or our role dropped below editor): say so, since the
+    // create/upload call itself succeeded locally.
+    const unsubErr = listingFeed.on('space-error', (ev: unknown) => {
+      const p = (ev ?? {}) as { space?: string; op?: string };
+      if (p.space !== spaceId) return;
+      toast.error(
+        p.op === 'upload'
+          ? "The host didn't accept the upload — you may no longer have editor access here"
+          : "The host didn't create the document — you may no longer have editor access here",
+      );
+    });
     const id = setInterval(refresh, 60000);
     return () => {
       unsub();
+      unsubErr();
       clearInterval(id);
     };
   }, [spaceId]);
@@ -105,9 +121,62 @@ export function SpaceView({ spaceId, tab, ship, navigate }: Props) {
     [joined, joinedDocs, owned, spaceId],
   );
 
-  // Create a doc, then move it into this space. `create` doesn't return the new
-  // id, so diff the owned-id set before/after to find it (robust to title
-  // collisions), then assign it and open it.
+  // Whether we may add content here: editor+ in a hosted OR joined space.
+  const canAdd = !!space && canAddToSpace(space);
+
+  // The space's docs as the backend sees them right now: a hosted space's are
+  // in our `owned`; a joined space's come from the host via space-docs.
+  const currentDocs = async (): Promise<DocSummary[]> => {
+    if (joined) return getSpaceDocs(spaceId);
+    const l = await listDocs();
+    setOwned(l.owned ?? []);
+    setSpaces(l.spaces ?? []);
+    return spaceDocs(l.owned ?? [], spaceId);
+  };
+
+  // Find the doc a create/upload just produced. Neither call returns an id
+  // for a joined space — the HOST mints it and announces it with a
+  // %space-doc fact — so diff the id set before/after and poll until it
+  // shows up (a title match wins over a bare "new id" in case another member
+  // added something at the same moment). Hosted spaces answer on the first
+  // poll; a joined space waits one ames round-trip.
+  const waitForNewDoc = async (
+    beforeIds: Set<string>,
+    title: string,
+  ): Promise<DocSummary | null> => {
+    const deadline = Date.now() + 15000;
+    for (;;) {
+      let fresh: DocSummary[] = [];
+      try {
+        fresh = (await currentDocs()).filter((d) => !beforeIds.has(d.id));
+      } catch {
+        /* transient; poll again */
+      }
+      const hit =
+        fresh.find((d) => d.title === title) ??
+        [...fresh].sort((a, b) => (b.modified ?? 0) - (a.modified ?? 0))[0];
+      if (hit) return hit;
+      if (Date.now() >= deadline) return null;
+      await new Promise((r) => setTimeout(r, 400));
+    }
+  };
+
+  // Open a doc we (or the host) just added. A joined space's docs live on
+  // the host, so mirror it first, exactly as onOpen does.
+  const openNewDoc = async (id: string) => {
+    if (joined && space) {
+      try {
+        await subscribeRemote(space.host, id);
+      } catch {
+        /* the Editor's mirror bootstrap will retry */
+      }
+    }
+    navigate(`/drive/d/${id}`);
+  };
+
+  // Create a doc IN this space. One action for both flavors: our agent makes
+  // it directly in a space we host, or asks the host to make it in a space
+  // we joined. Either way it comes back to us through the space's doc list.
   const onNewDoc = async (type: 'text' | 'sheet' | 'note') => {
     const title =
       type === 'sheet'
@@ -116,24 +185,60 @@ export function SpaceView({ spaceId, tab, ship, navigate }: Props) {
           ? 'Untitled Note'
           : 'Untitled Document';
     try {
-      const beforeIds = new Set(owned.map((d) => d.id));
-      await createDoc(type, title);
-      const l = await listDocs();
-      setOwned(l.owned ?? []);
-      setSpaces(l.spaces ?? []);
-      const created = (l.owned ?? [])
-        .filter((d) => !beforeIds.has(d.id))
-        .sort((a, b) => b.created - a.created);
-      const target = created[0];
+      const beforeIds = new Set(docs.map((d) => d.id));
+      await createInSpace(spaceId, type, title);
+      const target = await waitForNewDoc(beforeIds, title);
       if (!target) {
-        toast.error("Couldn't find the new document");
+        toast.error(
+          joined
+            ? "The host hasn't added the document yet — check the space in a moment"
+            : "Couldn't find the new document",
+        );
+        void refresh();
         return;
       }
-      await setDocSpace(target.id, spaceId);
-      navigate(`/drive/d/${target.id}`);
+      await openNewDoc(target.id);
     } catch (e) {
       toast.error(e);
     }
+  };
+
+  // Upload a file INTO this space. A hosted space stores it here; a joined
+  // space's bytes are forwarded to the host, who stores them and announces
+  // the new doc. The thumbnail is client-generated against OUR copy, so only
+  // a hosted upload gets one.
+  const onUpload = (e: Event) => {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const title = file.name.replace(/\.[^.]+$/, '');
+    const beforeIds = new Set(docs.map((d) => d.id));
+    setUploading(true);
+    toast
+      .promise(
+        (async () => {
+          const id = await uploadToSpace(file, spaceId);
+          const target = id ? { id } : await waitForNewDoc(beforeIds, title);
+          if (!target) {
+            throw new Error(
+              joined
+                ? "The host hasn't stored the file yet — check the space in a moment"
+                : "Couldn't find the uploaded file",
+            );
+          }
+          if (!joined) await generateAndUploadThumb(target.id, file);
+        })(),
+        {
+          loading: `Uploading ${file.name}…`,
+          success: `Uploaded ${file.name}`,
+        },
+      )
+      .then(() => refresh())
+      .catch(() => {})
+      .finally(() => {
+        setUploading(false);
+        input.value = '';
+      });
   };
 
   // Opening a doc. A HOSTED space's docs are local, so we just navigate. A
@@ -290,10 +395,46 @@ export function SpaceView({ spaceId, tab, ship, navigate }: Props) {
         </div>
         {space && (
           <div class="files-actions">
+            {/* Adding content is a ROLE question, not a hosted/joined one:
+                any editor+ member creates and uploads into the space, and the
+                host stores it either way. */}
+            {tab === 'files' && canAdd && (
+              <>
+                <button
+                  class="btn"
+                  data-testid="space-new-text"
+                  onClick={() => void onNewDoc('text')}
+                >
+                  + Document
+                </button>
+                <button
+                  class="btn"
+                  data-testid="space-new-sheet"
+                  onClick={() => void onNewDoc('sheet')}
+                >
+                  + Sheet
+                </button>
+                <button
+                  class="btn"
+                  data-testid="space-new-note"
+                  onClick={() => void onNewDoc('note')}
+                >
+                  + Note
+                </button>
+                <label class="btn upload-btn" data-testid="space-upload">
+                  {uploading ? 'Uploading…' : '⬆ Upload'}
+                  <input
+                    type="file"
+                    disabled={uploading}
+                    onChange={onUpload}
+                    style="display:none"
+                  />
+                </label>
+              </>
+            )}
             {joined ? (
-              // You can't create docs in a space you don't host, and
-              // you're not its admin — so you get a read-only member directory
-              // plus Leave.
+              // You're never the admin of a space you merely joined, so you
+              // get a read-only member directory plus Leave.
               <>
                 <button
                   class="btn"
@@ -312,19 +453,6 @@ export function SpaceView({ spaceId, tab, ship, navigate }: Props) {
               </>
             ) : (
               <>
-                {tab === 'files' && (
-                  <>
-                    <button class="btn" onClick={() => void onNewDoc('text')}>
-                      + Document
-                    </button>
-                    <button class="btn" onClick={() => void onNewDoc('sheet')}>
-                      + Sheet
-                    </button>
-                    <button class="btn" onClick={() => void onNewDoc('note')}>
-                      + Note
-                    </button>
-                  </>
-                )}
                 {canManage ? (
                   // Owner/admin: the full management dialog (edit roles, invite,
                   // remove). It doubles as the member directory for them.
@@ -400,18 +528,19 @@ export function SpaceView({ spaceId, tab, ship, navigate }: Props) {
       )}
       {!loading && !error && space && docs.length === 0 && (
         <div class="empty">
-          {joined ? (
+          {canAdd ? (
             <>
-              <p>No documents in this space yet.</p>
+              <p>Nothing here yet.</p>
               <p class="muted">
-                Syncing… documents the host shares will appear here.
+                Create a document, sheet, or note above, or upload a file, to
+                share it with the space.
               </p>
             </>
           ) : (
             <>
-              <p>Nothing here yet.</p>
+              <p>No documents in this space yet.</p>
               <p class="muted">
-                Create a document, sheet, or note above to share it with the space.
+                Syncing… documents the host shares will appear here.
               </p>
             </>
           )}

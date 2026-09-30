@@ -860,6 +860,14 @@
       %drive-set-nickname-poke
     =+  !<(p=set-nickname-poke vase)
     (recv-set-nickname src.bowl p)
+    ::
+      %drive-space-create-poke
+    =+  !<(p=space-create-poke vase)
+    (recv-space-create-poke src.bowl p)
+    ::
+      %drive-space-upload-poke
+    =+  !<(p=space-upload-poke vase)
+    (recv-space-upload-poke src.bowl p)
   ==
 ::
 ++  handle-watch
@@ -966,6 +974,21 @@
     ::
       [%forward-awareness @ ~]
     `state
+    ::
+      [%space-create @ ~]
+    ::  Our create-in-a-joined-space poke. The doc itself arrives as a
+    ::  %space-doc fact if the host accepted; a nack means it refused
+    ::  (no longer a member, role too low) -- tell our browsers.
+    ?.  ?=(%poke-ack -.sign)  `state
+    ?~  p.sign  `state
+    %-  (slog leaf+"drive: space create refused by the host" u.p.sign)
+    (push-app-event (space-error-ping (slav %uv i.t.wire) 'create'))
+    ::
+      [%space-upload @ ~]
+    ?.  ?=(%poke-ack -.sign)  `state
+    ?~  p.sign  `state
+    %-  (slog leaf+"drive: space upload refused by the host" u.p.sign)
+    (push-app-event (space-error-ping (slav %uv i.t.wire) 'upload'))
     ::
       [%space-mirror @ ~]
     =/  sid=space-id  (slav %uv i.t.wire)
@@ -1502,6 +1525,7 @@
       [%delete-dm (ot ~[who+p-fist id+uv-fist])]
       [%read-dm p-fist]
       [%set-nickname (ot ~[nick+so])]
+      [%space-create (ot ~[space+uv-fist doc-type+t-fist title+so])]
   ==
 ::
 ::  =================================================================
@@ -1555,6 +1579,7 @@
   ^-  ?
   ?+  -.action  %.n
     %create        %.y
+    %space-create  %.y
     %create-folder  %.y
     %rename        %.y
     %delete        %.y
@@ -2358,6 +2383,24 @@
     =.  state  state(dms (~(put by dms) who.action th(read now.bowl)))
     fanout-listing
     ::
+      %space-create
+    ::  A space we host: make the doc here. A space we joined: ask the
+    ::  host; the doc comes back to us as a %space-doc fact. Only text,
+    ::  sheet and note are created in a space (files go through
+    ::  /upload?space=, and folders are not a space concept).
+    ?.  ?=(?(%text %sheet %note) doc-type.action)  `state
+    ?:  (~(has by spaces) space.action)
+      (host-create-in-space space.action our.bowl doc-type.action title.action)
+    =/  sm  (~(get by space-mirrors) space.action)
+    ?~  sm  `state
+    :_  state
+    :~  :*  %pass  /space-create/(scot %uv space.action)
+            %agent  [host.u.sm %drive]
+            %poke  %drive-space-create-poke
+            !>(`space-create-poke`[space.action doc-type.action title.action])
+        ==
+    ==
+    ::
       %set-nickname
     =.  my-nickname  nick.action
     =.  nicknames  (~(put by nicknames) our.bowl nick.action)
@@ -2762,6 +2805,13 @@
   ^-  @t
   =,  enjs:format
   (json-to-string (pairs ~[type+s+'dm' peer+s+(scot %p who)]))
+::  "the host refused what you tried to add to this space": a member's
+::  create/upload poke was nacked. The browser toasts it (SpaceView).
+++  space-error-ping
+  |=  [sid=space-id op=@t]
+  ^-  @t
+  =,  enjs:format
+  (json-to-string (pairs ~[type+s+'space-error' space+s+(scot %uv sid) op+s+op]))
 ::  unread = peer-authored messages newer than our last-read stamp.
 ++  space-unread
   |=  sid=space-id
@@ -2779,6 +2829,111 @@
   ?:  ?&((gth at.m read.th) ?!(=(author.m our.bowl)))  +(acc)  acc
 ::  Host-side: append a message to a room we host, fan it to every member
 ::  ship over /space/<sid>, and ping our own browsers.
+::  =================================================================
+::  Members add content to a space (create / upload)
+::  =================================================================
+::
+::  Every doc in a space lives on the host, so a member cannot make one
+::  on their own ship and have it count. Instead the member asks the host
+::  (space-create-poke / space-upload-poke); the host makes the doc,
+::  records the space, and fans %space-doc to everyone -- the member sees
+::  their new doc arrive the same way they see the host's.
+::
+::  Who may add: the host itself, and any rostered member at editor or
+::  above. viewer/commenter read and comment on what is there.
+++  space-member-role
+  |=  [sid=space-id who=@p]
+  ^-  (unit space-role)
+  ?:  =(who our.bowl)  `%owner
+  =/  spc  (~(get by spaces) sid)
+  ?~  spc  ~
+  (~(get by members.u.spc) who)
+::
+++  may-add-to-space
+  |=  [sid=space-id who=@p]
+  ^-  ?
+  =/  r  (space-member-role sid who)
+  ?~  r  %.n
+  ?=(?(%editor %admin %owner) u.r)
+::
+::  Loom-safety cap on a stored file: blobs live in agent state and cross
+::  ames as one fact (host → each member on open), so a member's upload
+::  poke is bounded by the same number as our own /upload route.
+++  upload-cap  20.971.520
+::
+::  A blank document record, as %create and /upload make one.
+++  new-document
+  |=  [dt=doc-type title=@t parent=(unit doc-id)]
+  ^-  document
+  :*  doc-type=dt
+      title=title
+      created=now.bowl
+      modified=now.bowl
+      parent=parent
+      acl=*(map @p role)
+      updates=*(list stamped-update)
+      snapshot=[seq=0 blob=*octs]
+      versions=~
+      comments=*(map @uv comment)
+      trashed=~
+  ==
+::
+::  Put a doc we hold into a space we host and tell the members.
+++  place-in-space
+  |=  [did=doc-id sid=space-id]
+  ^-  (quip card _state)
+  =/  doc  (~(got by docs) did)
+  =/  sd=space-doc  [title.doc doc-type.doc modified.doc]
+  :_  state(doc-space (~(put by doc-space) did sid))
+  ~[(give-space-fact sid %space-doc did sd)]
+::
+::  Host-side: create a doc in a space we host on behalf of `who` (our own
+::  browser, or a member over ames). The doc is ours -- the host holds the
+::  authoritative copy of everything in a space -- and `who` reaches it
+::  through membership like any other space doc. A crash here is a nack
+::  for a remote poke: not our space, or `who` may not add to it.
+++  host-create-in-space
+  |=  [sid=space-id who=@p dt=doc-type title=@t]
+  ^-  (quip card _state)
+  ?.  (~(has by spaces) sid)  ~|(%no-such-space !!)
+  ?.  (may-add-to-space sid who)  ~|(%space-role-too-low !!)
+  =/  did=doc-id  fresh-doc-id
+  =/  siblings  (~(gut by children) 0v0 *(set doc-id))
+  =.  docs  (~(put by docs) did (new-document dt title ~))
+  =.  children  (~(put by children) 0v0 (~(put in siblings) did))
+  =^  space-cards  state  (place-in-space did sid)
+  =^  feed  state  fanout-listing
+  [(weld space-cards feed) state]
+::
+::  Host-side: store a file a member uploaded into a space we host. Same
+::  gate as create; same record and cap as our own /upload route.
+++  host-upload-into-space
+  |=  [sid=space-id who=@p title=@t mime=@t bytes=@ux size=@ud]
+  ^-  (quip card _state)
+  ?.  (~(has by spaces) sid)  ~|(%no-such-space !!)
+  ?.  (may-add-to-space sid who)  ~|(%space-role-too-low !!)
+  ?:  (gth size upload-cap)  ~|(%file-too-large !!)
+  =/  did=doc-id  fresh-doc-id
+  =/  dt=doc-type  ?:(=((end [3 6] mime) 'image/') %image %file)
+  =/  siblings  (~(gut by children) 0v0 *(set doc-id))
+  =.  docs  (~(put by docs) did (new-document dt title ~))
+  =.  blobs  (~(put by blobs) did `file-blob`[mime bytes size])
+  =.  children  (~(put by children) 0v0 (~(put in siblings) did))
+  =^  space-cards  state  (place-in-space did sid)
+  =^  feed  state  fanout-listing
+  [(weld space-cards feed) state]
+::
+++  recv-space-create-poke
+  |=  [src=@p p=space-create-poke]
+  ^-  (quip card _state)
+  ?.  ?=(?(%text %sheet %note) doc-type.p)  ~|(%bad-doc-type !!)
+  (host-create-in-space space-id.p src doc-type.p title.p)
+::
+++  recv-space-upload-poke
+  |=  [src=@p p=space-upload-poke]
+  ^-  (quip card _state)
+  (host-upload-into-space space-id.p src title.p mime.p bytes.p size.p)
+::
 ++  host-post-message
   |=  [sid=space-id author=@p text=@t]
   ^-  (quip card _state)
@@ -2926,7 +3081,12 @@
     =^  feed  state  fanout-listing
     [feed state(space-mirrors (~(put by space-mirrors) sid sm2))]
       %space-roster
-    =/  sm2=space-mirror  u.sm(members members.fact)
+    ::  Our own role rides along in the roster: a promotion or demotion
+    ::  reaches us here (the host sends no fresh %space-meta for it), and
+    ::  the create/upload buttons key off it, so keep it current.
+    =/  mine  (~(get by members.fact) our.bowl)
+    =/  sm2=space-mirror
+      u.sm(members members.fact, space-role (fall mine space-role.u.sm))
     =^  feed  state  fanout-listing
     [feed state(space-mirrors (~(put by space-mirrors) sid sm2))]
       %space-nicknames
@@ -3268,7 +3428,7 @@
       [(send [400 ~ [%plain "body required"]]) state]
     ::  Loom-safety cap: blobs live in agent state and cross ames as one
     ::  fact; 20 MiB is generous for docs/photos and cheap to lift later.
-    ?:  (gth p.u.body.request.inbound-request 20.971.520)
+    ?:  (gth p.u.body.request.inbound-request upload-cap)
       [(send [413 ~ [%plain "file too large (20 MiB max)"]]) state]
     =/  pams=(map @t @t)  (malt args)
     =/  title=@t  (~(gut by pams) 'title' 'Untitled')
@@ -3277,10 +3437,35 @@
       ?~  p  ~
       ?:  =('' u.p)  ~
       `(slav %uv u.p)
+    ::  ?space=<id>: the upload belongs to a space. One we host stores it
+    ::  here and announces it; one we joined cannot -- every doc in a space
+    ::  lives on the host -- so the bytes go to the host, which makes the
+    ::  doc and fans it back to every member (us included) as a
+    ::  %space-doc fact. That reply carries no id: the id is the host's.
+    =/  space=(unit space-id)
+      =/  s  (~(get by pams) 'space')
+      ?~  s  ~
+      ?:  =('' u.s)  ~
+      `(slav %uv u.s)
     =/  mime=@t
       (fall (~(get by hdrs) 'content-type') 'application/octet-stream')
     =/  body-octs=octs  u.body.request.inbound-request
     =/  blob=@ux  `@ux`q.body-octs
+    ?:  ?&(?=(^ space) !(~(has by spaces) u.space))
+      =/  sm  (~(get by space-mirrors) u.space)
+      ?~  sm  [(send [404 ~ [%plain "no such space"]]) state]
+      =/  poke-card=card
+        :*  %pass  /space-upload/(scot %uv u.space)
+            %agent  [host.u.sm %drive]
+            %poke  %drive-space-upload-poke
+            !>(`space-upload-poke`[u.space title mime blob p.body-octs])
+        ==
+      :_  state
+      :-  poke-card
+      %+  give-simple-payload:app:server  eyre-id
+      ^-  simple-payload:http
+      :-  [202 ['content-type'^'application/json']~]
+      `(as-octs:mimes:html '{"forwarded":true}')
     =/  did=doc-id  fresh-doc-id
     =/  is-image=?  =((end [3 6] mime) 'image/')
     =/  dt=doc-type  ?:(is-image %image %file)
@@ -3306,9 +3491,13 @@
           blobs     (~(put by blobs) did blob-rec)
           children  (~(put by children) pkey (~(put in siblings) did))
       ==
+    ::  A space we host: record the doc in it and announce it to members.
+    =^  space-cards  state
+      ?~  space  `state
+      (place-in-space did u.space)
     =^  feed-cards  state  fanout-listing
     :_  state
-    %+  weld  feed-cards
+    %+  weld  (weld space-cards feed-cards)
     %+  give-simple-payload:app:server  eyre-id
     ^-  simple-payload:http
     :-  :-  200

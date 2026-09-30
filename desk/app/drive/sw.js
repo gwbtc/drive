@@ -21,7 +21,7 @@
   // src/sw.ts
   var exports_sw = {};
   var sw = self;
-  var SHELL_VERSION = "v15";
+  var SHELL_VERSION = "v16";
   var CACHE = `drive-shell-${SHELL_VERSION}`;
   var SHELL_URLS = ["/drive", "/drive/app.js", "/drive/app.css"];
   var SHELL_KEY = "/drive";

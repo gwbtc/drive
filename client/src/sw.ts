@@ -40,7 +40,7 @@ const sw = self as unknown as SwGlobalScope;
 // Bump SHELL_VERSION in lockstep with the ?v= cache-bust in desk/app/drive/
 // ui.html whenever the app.js / app.css bundle changes. A new version installs
 // a fresh cache and re-precaches the current shell; activate() drops the old.
-const SHELL_VERSION = 'v15';
+const SHELL_VERSION = 'v16';
 const CACHE = `drive-shell-${SHELL_VERSION}`;
 
 // Precache the shell by bare pathname; the backend serves app.js / app.css

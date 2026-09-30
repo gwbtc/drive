@@ -56,6 +56,12 @@ org-owned container — instead of a single person. That is what makes it a
   any doc streams it live and edits flow back, all authorized by space
   membership (not a per-doc grant). Adding/removing docs and roster changes
   propagate to members in real time.
+- **Members add content too** — any `editor`+ member creates documents,
+  sheets and notes in the space, or uploads files into it, from their own
+  ship. The host makes and holds the doc (every doc in a space lives on the
+  host) and announces it to the whole space, so the member sees their own
+  addition arrive the same way everyone else does. `viewer`/`commenter`
+  members read and comment only.
 - **Invitations** — an owner/admin invites a `@p`; the invite lands in that
   person's inbox to **accept** (join) or **decline**. No out-of-band ids.
 - **Roles & safety** — only `owner`/`admin` manage members or rename/delete a
@@ -101,8 +107,9 @@ Because a space is hosted on one ship, that ship is your company's Drive:
    per team/department (Files → the **Spaces** switcher → **New space**).
 3. **Invite members** by `@p` from the space's *Members* dialog. Each member
    installs Drive on their own ship, accepts the invite from their inbox,
-   and the space appears in their sidebar. They edit from their own ship; the
-   host holds the authoritative copy.
+   and the space appears in their sidebar. They edit from their own ship, and
+   editors add their own documents and uploads to the space; the host holds
+   the authoritative copy of all of it.
 4. **Availability** mirrors the host ship's uptime — there is no third-party
    cloud. Owners keep an offline cache of docs they've opened (the PWA shell +
    IndexedDB); a space is otherwise reachable whenever its host is online.

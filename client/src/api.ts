@@ -597,6 +597,37 @@ export async function uploadFile(
   return j.id;
 }
 
+// Create a doc inside a space. For a space we HOST it exists when this
+// returns (it's in the next listing's `owned`). For a space we JOINED the
+// host makes it, and it shows up in our space-docs when the host's
+// %space-doc fact lands — so the id isn't returned here; SpaceView waits
+// for the new id either way.
+export async function createInSpace(
+  space: string,
+  type: 'text' | 'sheet' | 'note',
+  title: string,
+): Promise<void> {
+  await postAction({ 'space-create': { space, 'doc-type': type, title } });
+}
+
+// Upload a file into a space. A hosted space stores it here and returns the
+// id. A joined space cannot hold it (every space doc lives on the host), so
+// the agent forwards the bytes to the host and answers 202 with no id; the
+// doc appears in space-docs when the host announces it.
+export async function uploadToSpace(file: File, space: string): Promise<string | null> {
+  const title = file.name.replace(/\.[^.]+$/, '');
+  const params = new URLSearchParams({ title, space });
+  const r = await fetch(`${BASE}/upload?${params.toString()}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'content-type': file.type || 'application/octet-stream' },
+    body: file,
+  });
+  if (!r.ok) throw new Error(`upload failed: ${r.status}`);
+  const j = await r.json();
+  return typeof j.id === 'string' ? j.id : null;
+}
+
 // Store a client-generated image thumbnail (raw JPEG bytes) for a doc.
 // Best-effort — grids fall back to /drive/blob when no thumb exists.
 export async function uploadThumb(docId: string, jpegBytes: Uint8Array): Promise<void> {

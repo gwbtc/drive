@@ -25,6 +25,13 @@ export const spaceDocs = <T extends { space?: string | null }>(
 // absent flag means hosted (the default when the flag is absent).
 export const isJoinedSpace = (s: { joined?: boolean }): boolean => s.joined === true;
 
+// Whether this ship may put new content (a doc or an upload) into a space:
+// `editor` and above, in a space we host OR one we joined. viewer/commenter
+// read and comment on what's there. The backend enforces the same rule on the
+// host, so this only decides whether to show the buttons.
+export const canAddToSpace = (s: { role: string }): boolean =>
+  s.role === 'editor' || s.role === 'admin' || s.role === 'owner';
+
 // === Space-invite optimistic-hide bookkeeping ===============================
 //
 // The invites inbox optimistically hides an invite the moment you accept/decline

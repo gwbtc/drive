@@ -67,6 +67,14 @@
           [%delete =msg-id]
       ==
   ==
+::  member → host: create a doc in a space we joined. The host makes the
+::  doc, puts it in the space and fans %space-doc, so it reaches every
+::  member (us included) over the /space channel. Editors and above only.
++$  space-create-poke  [=space-id =doc-type title=@t]
+::  member → host: upload a file into a space we joined. Same gate; the
+::  host stores the bytes exactly as its own /upload route would. The
+::  size travels beside the bytes because a @ux drops leading zeros.
++$  space-upload-poke  [=space-id title=@t mime=@t bytes=@ux size=@ud]
 ::  ship → ship DM delivery. The receiver stamps author=src (unspoofable);
 ::  the sender supplies the id + its own send time.
 +$  dm-poke  [=msg-id text=@t at=@da]
@@ -267,6 +275,10 @@
       [%send-dm who=@p text=@t]
       [%delete-dm who=@p =msg-id]
       [%read-dm who=@p]
+      ::  create a doc inside a space: ours → made here; joined → the host
+      ::  makes it (see space-create-poke). The new doc's id arrives with
+      ::  the %space-doc fact, not in this action's reply.
+      [%space-create space=space-id =doc-type title=@t]
       ::  set this ship's own nickname; '' clears it
       [%set-nickname nick=@t]
   ==
