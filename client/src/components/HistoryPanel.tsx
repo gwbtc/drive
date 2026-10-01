@@ -8,6 +8,7 @@ import {
   getVersionBlob,
   saveVersion,
   formatDate,
+  displayName,
   type HistoryEntry,
   type VersionInfo,
 } from '../api';
@@ -43,7 +44,8 @@ function formatBytes(n: number): string {
 const sessionLine = (s: EditSession): string => {
   const changes = `${s.count} change${s.count === 1 ? '' : 's'}`;
   const when = s.end != null ? formatDate(s.end) : '';
-  return when ? `${s.author} · ${changes} · ${when}` : `${s.author} · ${changes}`;
+  const who = displayName(s.author);
+  return when ? `${who} · ${changes} · ${when}` : `${who} · ${changes}`;
 };
 
 export function HistoryPanel({ docId, provider, editor, docType, onClose }: Props) {
@@ -219,13 +221,13 @@ export function HistoryPanel({ docId, provider, editor, docType, onClose }: Prop
             ) : (
               <ul class="history-vlist">
                 {named.map((v) => {
-                  const contribs = contributorSummary(v.contributors);
+                  const contribs = contributorSummary(v.contributors.map(displayName));
                   return (
                     <li key={v.at} class="history-version">
                       <div class="history-version-main">
                         <span class="history-version-label">{v.label}</span>
                         <span class="history-version-sub muted">
-                          {v.author} · {formatDate(v.at)}
+                          {displayName(v.author)} · {formatDate(v.at)}
                           {contribs ? ` · ${contribs}` : ''}
                         </span>
                       </div>
@@ -317,7 +319,7 @@ function PreviewModal({
           <div>
             <h2 id="history-preview-title">{preview.version.label ?? 'Version'}</h2>
             <p class="muted history-preview-meta">
-              {preview.version.author} · {formatDate(preview.version.at)}
+              {displayName(preview.version.author)} · {formatDate(preview.version.at)}
             </p>
           </div>
           <button class="btn-icon" aria-label="Close preview" onClick={onClose}>

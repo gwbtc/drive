@@ -56,3 +56,26 @@ describe('formatDate', () => {
     expect(s.length).toBeGreaterThan(0);
   });
 });
+
+import { displayName, shipFromInput } from './api';
+
+describe('mnemonym names', () => {
+  const P = '~ponnyd-toblun-libmex-tacsut--lanmus-tilrys-sattes-daplyd';
+  const NYM =
+    '.untrained.exhort.admire.decrease.depraved.abstruse.milieu.perform.confer.chastise.defames.kebab';
+
+  test('a comet with no nickname shows its mnemonym; others keep the @p', () => {
+    expect(displayName(P)).toBe(NYM);
+    expect(displayName(P.slice(1))).toBe(NYM);
+    expect(displayName('~zod')).toBe('~zod');
+    expect(displayName('sampel-palnet')).toBe('~sampel-palnet');
+  });
+
+  test('ship inputs take a @p or a mnemonym and yield the bare @p', () => {
+    expect(shipFromInput(P)).toBe(P.slice(1));
+    expect(shipFromInput(` ${P.slice(1)} `)).toBe(P.slice(1));
+    expect(shipFromInput(NYM)).toBe(P.slice(1));
+    expect(shipFromInput('~zod')).toBe('zod');
+    expect(() => shipFromInput('.untrained.exhort')).toThrow();
+  });
+});

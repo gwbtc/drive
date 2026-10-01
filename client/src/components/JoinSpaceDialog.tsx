@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { joinSpace } from '../api';
+import { joinSpace, shipFromInput } from '../api';
 import { toast } from '../ui/toast';
 import { useFocusTrap } from '../ui/useFocusTrap';
 
@@ -32,8 +32,15 @@ export function JoinSpaceDialog({ onClose }: Props) {
 
   const onSubmit = async (e: Event) => {
     e.preventDefault();
-    const h = host.trim();
     const id = spaceId.trim();
+    // A comet's mnemonym is accepted too and decoded to its @p here.
+    let h: string;
+    try {
+      h = host.trim() ? shipFromInput(host) : '';
+    } catch (err) {
+      toast.error(err);
+      return;
+    }
     if (!h || !id || busy) return;
     setBusy(true);
     try {
@@ -78,7 +85,7 @@ export function JoinSpaceDialog({ onClose }: Props) {
                 class="input"
                 data-testid="join-space-host"
                 aria-label="Host ship"
-                placeholder="~sampel-palnet"
+                placeholder="~sampel-palnet or .its.mnemonym"
                 value={host}
                 onInput={(e) => setHost((e.target as HTMLInputElement).value)}
               />

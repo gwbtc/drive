@@ -1,4 +1,4 @@
-import { displayName } from '../api';
+import { displayName, shipFromInput } from '../api';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import {
   shareDoc,
@@ -41,14 +41,21 @@ export function ShareDialog({ doc, ship, onClose }: Props) {
     const trimmed = (who || '').trim();
     if (!trimmed) return;
     // Backend expects bare ship name (no leading tilde) so slav %p succeeds.
-    const bare = trimmed.replace(/^~/, '');
+    // A comet's mnemonym is accepted too and decoded to its @p here.
+    let bare: string;
+    try {
+      bare = shipFromInput(trimmed);
+    } catch (err) {
+      toast.error(err);
+      return;
+    }
     if (!bare) return;
     try {
       await shareDoc(doc.id, bare, role);
       const display = '~' + bare;
       setAcl((a) => [...a.filter((x) => x.who !== display), { who: display, role }]);
       setWho('');
-      toast.success(`Shared with ~${bare}`);
+      toast.success(`Shared with ${displayName('~' + bare)}`);
     } catch (err) {
       toast.error('Could not share — check the ship name.');
     }
@@ -123,7 +130,7 @@ export function ShareDialog({ doc, ship, onClose }: Props) {
             <input
               class="input"
               aria-label="Ship name to share with"
-              placeholder="~zod or ~sampel-palnet"
+              placeholder="~sampel-palnet or .its.mnemonym"
               value={who}
               onInput={(e) => setWho((e.target as HTMLInputElement).value)}
             />

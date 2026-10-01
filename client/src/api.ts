@@ -1,3 +1,4 @@
+import { nymToShip, shipToNym } from './mnemonym';
 // All client→server actions go through HTTP POST to /drive/action.
 // (Plain HTTP posts to an Eyre-bound path — no Eyre channel pokes.)
 
@@ -213,11 +214,27 @@ export const ourShip = (): string | null => {
 // without threading the map through props.
 let _nicknames: Record<string, string> = {};
 
-// A ship's display name: its nickname if one is known, else the ~@p itself.
+// A ship's display name: its nickname if one is known, else a comet's
+// mnemonym (`.word.word…`), else the ~@p itself.  Display only: the @p stays
+// what is sent, stored and compared.
 export const displayName = (ship: string): string => {
   const key = normalizeShip(ship);
   const nick = _nicknames[key];
-  return nick && nick.length ? nick : key;
+  return nick && nick.length ? nick : shipToNym(key) ?? key;
+};
+
+// What a person typed where a ship is expected (share, invite, join): a @p,
+// with or without its ~, or a comet's mnemonym. Returns the bare @p (no ~),
+// which is what the backend's slav %p wants. Throws on a mnemonym that does
+// not decode, so a typo is reported instead of becoming a wrong ship.
+export const shipFromInput = (raw: string): string => {
+  const t = raw.trim();
+  if (t.startsWith('.')) {
+    const p = nymToShip(t);
+    if (!p) throw new Error(`"${t}" is not a valid name`);
+    return p.slice(1);
+  }
+  return t.replace(/^~/, '');
 };
 
 export const setNickname = (nick: string): Promise<void> =>

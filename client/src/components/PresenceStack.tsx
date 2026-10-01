@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { Awareness } from 'y-protocols/awareness';
+import { displayName } from '../api';
 
 type User = { name?: string; color?: string; ship?: string };
 
@@ -38,18 +39,19 @@ export function PresenceStack({ awareness, me, ship }: Props) {
 
   return (
     <div class="presence-stack" aria-label={`${peers.length} other ${peers.length === 1 ? 'user' : 'users'} viewing`}>
-      <span class="presence-self patp" title={`You (${ship})`}>{shortLabel(ship)}</span>
+      <span class="presence-self patp" title={`You (${displayName(ship)})`}>{shortLabel(displayName(ship))}</span>
       {visible.map((p) => {
         const label = p.user.ship ?? p.user.name ?? '?';
-        const display = shortLabel(label);
+        const shown = p.user.ship ? displayName(p.user.ship) : label;
+        const display = shortLabel(shown);
         const color = p.user.color || userColor(label);
         return (
           <span
             key={p.clientId}
             class="presence-dot"
             style={{ background: color }}
-            title={label}
-            aria-label={label}
+            title={shown}
+            aria-label={shown}
           >
             {display.charAt(0).toUpperCase()}
           </span>
@@ -63,7 +65,8 @@ export function PresenceStack({ awareness, me, ship }: Props) {
 function shortLabel(s: string): string {
   if (!s) return '?';
   if (s === 'Guest') return 'G';
-  // For @p names like ~zod or ~sampel-palnet, take the first letter after ~.
-  const tilded = s.startsWith('~') ? s.slice(1) : s;
+  // For @p names like ~zod or mnemonyms like .word.word, the first letter
+  // after the sigil.
+  const tilded = s.replace(/^[~.]/, '');
   return tilded.charAt(0);
 }
