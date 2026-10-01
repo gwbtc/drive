@@ -1,4 +1,4 @@
-import { displayName } from '../api';
+import { displayName, shipFromInput } from '../api';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import {
   getSpace,
@@ -56,7 +56,14 @@ export function SpaceMembersDialog({ space, ship, onClose, navigate }: Props) {
     if (!trimmed) return;
     // Backend wants a bare ship name; the api wrapper strips the ~. Roster
     // entries carry the ~, so build the display form for the optimistic update.
-    const bare = trimmed.replace(/^~/, '');
+    // A comet's mnemonym is accepted too and decoded to its @p here.
+    let bare: string;
+    try {
+      bare = shipFromInput(trimmed);
+    } catch (err) {
+      toast.error(err);
+      return;
+    }
     if (!bare) return;
     const display = '~' + bare;
     try {
@@ -66,7 +73,7 @@ export function SpaceMembersDialog({ space, ship, onClose, navigate }: Props) {
       await inviteToSpace(space.id, bare, role);
       setRoster((r) => [...r.filter((m) => m.who !== display), { who: display, role }]);
       setWho('');
-      toast.success(`Invited ${display}`);
+      toast.success(`Invited ${displayName(display)}`);
     } catch {
       toast.error('Could not invite member — check the ship name.');
     }
@@ -212,7 +219,7 @@ export function SpaceMembersDialog({ space, ship, onClose, navigate }: Props) {
               <input
                 class="input"
                 aria-label="Ship name to invite"
-                placeholder="~zod or ~sampel-palnet"
+                placeholder="~sampel-palnet or .its.mnemonym"
                 value={who}
                 onInput={(e) => setWho((e.target as HTMLInputElement).value)}
               />
