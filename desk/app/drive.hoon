@@ -978,16 +978,16 @@
       [%space-create @ ~]
     ::  Our create-in-a-joined-space poke. The doc itself arrives as a
     ::  %space-doc fact if the host accepted; a nack means it refused
-    ::  (no longer a member, role too low) -- tell our browsers.
+    ::  (no longer a member, role too low) -- tell our browsers. No
+    ::  console line: the browser is told, and the nack tang of a poke
+    ::  carrying user content must not be printed.
     ?.  ?=(%poke-ack -.sign)  `state
     ?~  p.sign  `state
-    %-  (slog leaf+"drive: space create refused by the host" u.p.sign)
     (push-app-event (space-error-ping (slav %uv i.t.wire) 'create'))
     ::
       [%space-upload @ ~]
     ?.  ?=(%poke-ack -.sign)  `state
     ?~  p.sign  `state
-    %-  (slog leaf+"drive: space upload refused by the host" u.p.sign)
     (push-app-event (space-error-ping (slav %uv i.t.wire) 'upload'))
     ::
       [%space-mirror @ ~]
